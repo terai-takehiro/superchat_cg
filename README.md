@@ -10,7 +10,14 @@ YouTube Live のスーパーチャット（必要なら通常コメントも）�
 - Singular Live のコントロールアプリの App Token
 - （取得方法を「YouTube Data API」にする場合のみ）YouTube Data API v3 の API Key
 
-## 起動
+## Windows 版（exe）
+
+[Releases](https://github.com/terai-takehiro/superchat_cg/releases) から `superchat-cg-windows-*.zip` をダウンロードし、展開した `superchat-cg.exe` をダブルクリックすると起動します（Node.js 不要）。ブラウザで操作画面が自動で開き、設定は exe と同じフォルダに保存されます。
+
+- exe は `npm run build:exe` で作成できます（実行した OS 用の実行ファイルが `dist/` にできます）。
+- main にマージされると、GitHub Actions が Windows 用 exe をビルドし、`package.json` のバージョン（例：`v1.0.0`）でリリースを作成します。新しいリリースを出すときは `version` を上げてからマージしてください。
+
+## 起動（Node.js から）
 
 ```sh
 node server.js                # http://localhost:3000/
@@ -102,5 +109,7 @@ lib/demo.js        デモ用ダミーコメント
 lib/config.js      設定の読み書き
 public/            操作画面・設定画面
 start.bat / start.command  ダブルクリック起動用
+scripts/build-exe.js       exe の作成
+.github/workflows/         Windows 版のビルドとリリース
 mockup/            UI モックアップ（参考）
 ```

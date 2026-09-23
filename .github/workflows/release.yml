@@ -1,0 +1,74 @@
+name: Windows 版ビルド・リリース
+
+# - PR：Windows 上で exe をビルドして動作確認（リリースはしない）
+# - main へのマージ：package.json のバージョン（例 1.0.0 → v1.0.0）のリリースがまだなければ作成し、zip を添付
+#   新しいリリースを出すときは package.json の version を上げてマージする
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: npm ci
+
+      - run: npm run build:exe
+
+      - name: 動作確認（exe を起動して画面が返るか）
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath dist\superchat-cg.exe -ArgumentList '--demo','--port','3999','--no-open' -PassThru
+          Start-Sleep -Seconds 5
+          foreach ($path in '/', '/settings', '/style.css', '/ops.js', '/api/settings') {
+            $r = Invoke-WebRequest "http://localhost:3999$path" -UseBasicParsing
+            if ($r.StatusCode -ne 200) { throw "$path が $($r.StatusCode)" }
+          }
+          Stop-Process -Id $p.Id -Force
+          Start-Sleep -Seconds 1
+          Remove-Item dist\config.json, dist\state.json, dist\usage.json -ErrorAction SilentlyContinue
+
+      - name: バージョンとリリース済みかを確認
+        id: ver
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $v = node -p "require('./package.json').version"
+          "tag=v$v" >> $env:GITHUB_OUTPUT
+          gh release view "v$v" --repo "${{ github.repository }}" *> $null
+          $exists = if ($LASTEXITCODE -eq 0) { 'true' } else { 'false' }
+          "exists=$exists" >> $env:GITHUB_OUTPUT
+          exit 0
+
+      - name: zip にまとめる
+        shell: pwsh
+        run: |
+          Copy-Item docs\README.txt dist\
+          Compress-Archive -Path dist\* -DestinationPath "superchat-cg-windows-${{ steps.ver.outputs.tag }}.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: superchat-cg-windows
+          path: superchat-cg-windows-*.zip
+
+      - name: リリースを作成
+        if: github.event_name != 'pull_request' && steps.ver.outputs.exists != 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.ver.outputs.tag }}
+          name: スーパーチャットCG ${{ steps.ver.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          files: superchat-cg-windows-*.zip
+          body_path: docs/release-notes.md
