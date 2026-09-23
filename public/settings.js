@@ -34,6 +34,7 @@ function fill(s) {
   $('fColor').value = s.singular.fields.color;
 
   setRadio('sendMode', s.singular.autoSend ? 'auto' : 'manual');
+  setRadio('swapMode', s.singular.swapInPlace === false ? 'outin' : 'update');
   $('dispSec').value = s.singular.displaySeconds;
   $('gapSec').value = s.singular.gapSeconds;
 
@@ -100,6 +101,7 @@ function collect() {
         color: $('fColor').value.trim(),
       },
       autoSend: radio('sendMode') === 'auto',
+      swapInPlace: radio('swapMode') !== 'outin',
       displaySeconds: Number($('dispSec').value),
       gapSeconds: Number($('gapSec').value),
     },

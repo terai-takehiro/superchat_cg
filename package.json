@@ -1,6 +1,6 @@
 {
   "name": "superchat-cg",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "YouTube Live のスーパーチャット／コメントを Singular Live の CG に反映するローカル Web アプリ",
   "main": "server.js",
   "scripts": {
