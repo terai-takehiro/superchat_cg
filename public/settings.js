@@ -32,6 +32,7 @@ function fill(s) {
   $('fComment').value = s.singular.fields.comment;
   $('fIcon').value = s.singular.fields.icon;
   $('fColor').value = s.singular.fields.color;
+  $('fShow').value = s.singular.fields.show;
 
   setRadio('sendMode', s.singular.autoSend ? 'auto' : 'manual');
   $('dispSec').value = s.singular.displaySeconds;
@@ -98,6 +99,7 @@ function collect() {
         comment: $('fComment').value.trim(),
         icon: $('fIcon').value.trim(),
         color: $('fColor').value.trim(),
+        show: $('fShow').value.trim(),
       },
       autoSend: radio('sendMode') === 'auto',
       displaySeconds: Number($('dispSec').value),
