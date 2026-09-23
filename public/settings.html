@@ -107,7 +107,7 @@
           <label for="sgSub">サブコンポジション名 <span class="req">必須</span></label>
           <p class="support" id="sgSub-s">CG を出し入れする対象。大文字・小文字も一致させてください</p>
           <div class="with-btn">
-            <input class="input" id="sgSub" type="text" aria-describedby="sgSub-s" spellcheck="false">
+            <input class="input" id="sgSub" type="text" placeholder="例：superchat" aria-describedby="sgSub-s" spellcheck="false">
             <button type="button" class="btn btn-secondary" id="testConn">保存して接続テスト</button>
           </div>
           <p id="testResult" role="status" style="margin:0"></p>
@@ -121,10 +121,13 @@
               <tr><td><label for="fName">名前</label></td><td><input class="input" id="fName" spellcheck="false"></td></tr>
               <tr><td><label for="fAmount">金額</label></td><td><input class="input" id="fAmount" spellcheck="false"></td></tr>
               <tr><td><label for="fComment">コメント</label></td><td><input class="input" id="fComment" spellcheck="false"></td></tr>
+              <tr><td><label for="fDText">コメント（表示用） <span class="opt">任意</span></label></td><td><input class="input" id="fDText" placeholder="例：d_text" spellcheck="false"></td></tr>
+              <tr><td><label for="fDPrice">金額（表示用） <span class="opt">任意</span></label></td><td><input class="input" id="fDPrice" placeholder="例：d_price" spellcheck="false"></td></tr>
               <tr><td><label for="fIcon">アイコン画像URL <span class="opt">任意</span></label></td><td><input class="input" id="fIcon" placeholder="例：Icon" spellcheck="false"></td></tr>
               <tr><td><label for="fColor">金額帯の色 <span class="opt">任意</span></label></td><td><input class="input" id="fColor" placeholder="例：price_color" spellcheck="false"></td></tr>
             </tbody>
           </table>
+          <p class="support">「表示用」の2つには、コメント・金額と同じ値を入れて送ります。</p>
           <p class="support">通常コメントのときは「金額」を空、「金額帯の色」を <code>auto</code> で送ります。スパチャのときの「金額帯の色」は YouTube と同じ色を <code>#d00000</code> の形式で送ります（空欄にすると送らず、Singular 側の自動判定になります）</p>
         </div>
         <div class="with-btn" style="align-items:center">
