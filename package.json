@@ -4,7 +4,8 @@
   "description": "YouTube Live のスーパーチャット／コメントを Singular Live の CG に反映するローカル Web アプリ",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "demo": "node server.js --demo"
   },
   "engines": {
     "node": ">=18"
