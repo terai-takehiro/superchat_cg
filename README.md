@@ -4,7 +4,9 @@ YouTube Live のスーパーチャット（＋通常コメント）をリアル�
 
 ## 現状
 
-- `mockup/index.html` … UI モックアップ（ダミーデータで動作。ブラウザで直接開けます）
+- `mockup/index.html` … 操作画面のモックアップ（ダミーデータで動作。ブラウザで直接開けます）
+- `mockup/settings.html` … 設定画面のモックアップ
+- UI はデジタル庁デザインシステムを参考。タッチ操作前提で、送出は「コメントを選択 → 送出ボタン」の2段階
 - `lib/` … バックエンドの下書き（YouTube Data API v3 取得／Singular Control App API 送出キュー）。未接続・未検証
 
 ## 予定仕様
