@@ -124,23 +124,26 @@ const NAMES = ['たなか', 'Sakura Ch.', 'ぽん太', 'ゆうき', 'Mika', 'や
 const TEXTS = ['こんばんは！', '今日も楽しみにしてました', 'いつも応援してます！！', '初見です', 'その話もっと聞きたい', 'おつかれさまです', 'ナイス！', '声かわいい', 'BGMいいですね'];
 const SC_TEXTS = ['いつも元気もらってます！少しですが応援です', '誕生日おめでとう！', 'グッズ代にしてください', '', '昨日の配信最高でした', '受験合格しました！報告です'];
 const AMOUNTS = [100, 200, 500, 1000, 2000, 5000, 10000, 50000];
-function tier(yen) { // YouTube の金額帯の色 [背景, 文字]
-  if (yen >= 10000) return ['#e62117', '#fff'];
-  if (yen >= 5000) return ['#e91e63', '#fff'];
-  if (yen >= 2000) return ['#e65100', '#fff'];
-  if (yen >= 1000) return ['#ffca28', '#1a1a1a'];
-  if (yen >= 500) return ['#1de9b6', '#1a1a1a'];
-  if (yen >= 200) return ['#00e5ff', '#1a1a1a'];
-  return ['#1565c0', '#fff'];
-}
+// YouTube スーパーチャットの金額帯カラー（日本円基準）
+// header = 名前・金額部分の色（バッジに使用） / body = コメント部分の色 / text = 文字色
+const TIERS = [
+  { min: 10000, header: '#d00000', body: '#e62117', text: '#ffffff' }, // 赤
+  { min: 5000,  header: '#c2185b', body: '#e91e63', text: '#ffffff' }, // マゼンタ
+  { min: 2000,  header: '#e65100', body: '#f57c00', text: '#ffffff' }, // オレンジ
+  { min: 1000,  header: '#ffb300', body: '#ffca28', text: '#000000' }, // 黄
+  { min: 500,   header: '#00bfa5', body: '#1de9b6', text: '#000000' }, // 緑
+  { min: 200,   header: '#00b8d4', body: '#00e5ff', text: '#000000' }, // 水色
+  { min: 0,     header: '#1565c0', body: '#1e88e5', text: '#ffffff' }, // 青
+];
+const tier = yen => TIERS.find(t => yen >= t.min);
 const pick = a => a[Math.floor(Math.random() * a.length)];
 let seq = 0;
 function dummy(forceSc) {
   const sc = forceSc || Math.random() < 0.25;
   const yen = pick(AMOUNTS);
-  const [bg, fg] = sc ? tier(yen) : [null, null];
+  const t = sc ? tier(yen) : null;
   return { id: 'm' + (++seq), name: pick(NAMES), time: new Date(), type: sc ? 'superchat' : 'text',
-    amount: sc ? '¥' + yen.toLocaleString() : '', tier: bg, tierFg: fg,
+    amount: sc ? '¥' + yen.toLocaleString() : '', tier: t?.header, tierFg: t?.text,
     comment: sc ? pick(SC_TEXTS) : pick(TEXTS), member: Math.random() < 0.2, sent: false, fresh: true };
 }
 
