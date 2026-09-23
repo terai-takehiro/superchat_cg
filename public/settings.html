@@ -54,17 +54,31 @@
             <label class="radio-card"><input type="radio" name="fetchMode" value="all"><b>全コメント</b><span class="support">通常コメントも取得（手動で選んで送出）</span></label>
           </div>
         </fieldset>
+        <fieldset class="field">
+          <legend class="legend">取得間隔の決め方</legend>
+          <p class="support">YouTube API には1日の使用上限があり、コメント取得1回で5ユニット使います。長時間の配信では「自動」を選んでください</p>
+          <div class="radio-cards">
+            <label class="radio-card"><input type="radio" name="pacing" value="auto"><b>自動（おすすめ）</b><span class="support">1日の上限を使い切らないよう、リセットまでの時間に均等に割り振ります</span></label>
+            <label class="radio-card"><input type="radio" name="pacing" value="fixed"><b>固定</b><span class="support">指定した秒数ごとに取得。上限に達するとリセットまで休止します</span></label>
+          </div>
+        </fieldset>
         <div class="form-row">
           <div class="field">
+            <label for="ytQuota">1日の上限（ユニット）</label>
+            <p class="support" id="ytQuota-s">Google Cloud Console の「割り当て」で確認できます。既定は 10,000。日本時間 16時（冬は17時）にリセット</p>
+            <input class="input input-short" id="ytQuota" type="number" min="100" step="1000" inputmode="numeric" aria-describedby="ytQuota-s">
+          </div>
+          <div class="field" id="ytIntervalField">
             <label for="ytInterval">取得間隔（秒）</label>
-            <p class="support" id="ytInterval-s">短いほど速く反映されますが、API の1日の上限に早く達します</p>
+            <p class="support" id="ytInterval-s">「固定」のときに使います</p>
             <input class="input input-short" id="ytInterval" type="number" min="1" step="1" inputmode="numeric" aria-describedby="ytInterval-s">
           </div>
-          <div class="field">
-            <label for="ytBacklog">取得開始より前のコメント</label>
-            <p class="support" id="ytBacklog-s">開始時点でチャット欄に残っているコメントの扱い</p>
-            <select class="input" id="ytBacklog" aria-describedby="ytBacklog-s"><option value="skip">取り込まない</option><option value="load">取り込む</option></select>
-          </div>
+        </div>
+        <div class="notice info" id="paceEstimate" aria-live="polite"></div>
+        <div class="field">
+          <label for="ytBacklog">取得開始より前のコメント</label>
+          <p class="support" id="ytBacklog-s">開始時点でチャット欄に残っているコメントの扱い</p>
+          <select class="input" id="ytBacklog" aria-describedby="ytBacklog-s" style="max-width:320px"><option value="skip">取り込まない</option><option value="load">取り込む</option></select>
         </div>
         <p class="support">コメント取得の開始・停止は<a href="/">操作画面</a>で行います。</p>
       </div>

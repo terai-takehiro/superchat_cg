@@ -194,3 +194,7 @@ fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
 .avatar img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
 .log .err { color: var(--red-900); font-weight: 700; }
 .set-state { font-size: .875rem; color: var(--green-800); font-weight: 700; }
+.live-quota { font-size: .875rem; color: var(--gray-600); text-align: right; line-height: 1.5; }
+.live-quota b { color: var(--gray-800); }
+.live-quota .paused { color: #5c4700; font-weight: 700; }
+.input:disabled { background: var(--gray-50); color: var(--gray-536); border-color: var(--gray-200); cursor: not-allowed; }

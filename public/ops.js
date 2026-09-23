@@ -163,6 +163,7 @@ function renderStatus() {
   $('liveBar').classList.toggle('on', on);
   $('liveState').textContent = on ? '取得中' : '停止中';
   $('liveTitle').textContent = yt.title || (state.settings?.youtube.video ? state.settings.youtube.video : '未設定（設定画面で配信URLを入力してください）');
+  $('liveQuota').innerHTML = quotaText(yt);
   $('liveBtn').textContent = on ? '取得を停止する' : '取得を開始する';
   $('liveBtn').className = `btn ${on ? 'btn-secondary' : 'btn-primary'}`;
   const st = $('ytStatus');
@@ -173,6 +174,19 @@ function renderStatus() {
   $('demoBadge').hidden = !state.demo;
   $('modeSeg').hidden = !fetchAll();
   document.querySelectorAll('input[name=mode]').forEach((r) => { r.checked = r.value === viewMode(); });
+}
+
+const hm = (t) => new Date(t).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+function quotaText(yt) {
+  if (!yt.dailyQuota) return '';
+  const lines = [];
+  if (yt.running && yt.pausedUntil) {
+    lines.push(`<span class="paused">API の上限に達したため ${hm(yt.pausedUntil)} まで休止中（自動で再開）</span>`);
+  } else if (yt.running && yt.intervalMs) {
+    lines.push(`取得間隔 <b>約 ${Math.round(yt.intervalMs / 1000)} 秒</b>`);
+  }
+  lines.push(`API 使用量 <b>${yt.quotaUsed.toLocaleString()}</b> / ${yt.dailyQuota.toLocaleString()}（${hm(yt.resetAt)} リセット）`);
+  return lines.join('<br>');
 }
 
 function render() {

@@ -7,6 +7,7 @@ const os = require('os');
 
 const config = require('./lib/config');
 const { YouTubeLiveChat } = require('./lib/youtube');
+const { QuotaTracker } = require('./lib/quota');
 const { DemoChat } = require('./lib/demo');
 const { CgController, testConnection, buildPayload } = require('./lib/singular');
 
@@ -44,7 +45,7 @@ const MAX_HISTORY = 500;
 let history = []; // 新しい順
 const logs = [];
 
-const chat = DEMO ? new DemoChat() : new YouTubeLiveChat();
+const chat = DEMO ? new DemoChat() : new YouTubeLiveChat(new QuotaTracker());
 const cg = new CgController(() => settings, { dryRun: DEMO });
 
 const clients = new Set();
@@ -73,10 +74,14 @@ chat.on('message', (msg) => {
   broadcast('message', msg);
   if (msg.type !== 'text' && settings.singular.autoSend) cg.enqueue(msg);
 });
+let lastYtError = '';
 chat.on('status', (s) => {
   broadcast('youtube', s);
-  if (!s.running && s.lastError) log(`YouTube の取得が止まりました：${s.lastError}`, 'error');
-  else if (s.lastError) log(`YouTube 取得エラー（再試行中）：${s.lastError}`, 'error');
+  if (s.lastError && s.lastError !== lastYtError) {
+    if (!s.running) log(`YouTube の取得が止まりました：${s.lastError}`, 'error');
+    else log(`YouTube：${s.lastError}`, 'error');
+  }
+  lastYtError = s.lastError;
 });
 
 cg.on('state', (s) => broadcast('cg', s));
@@ -103,6 +108,8 @@ function validate(s) {
   const errors = [];
   if (!Number.isInteger(s.port) || s.port < 1024 || s.port > 65535) errors.push({ field: 'port', message: 'ポート番号は 1024〜65535 の整数で入力してください' });
   if (!['superchat', 'all'].includes(s.youtube.mode)) errors.push({ field: 'fetchMode', message: '取得するコメントを選んでください' });
+  if (!['auto', 'fixed'].includes(s.youtube.pacing)) errors.push({ field: 'pacing', message: '取得間隔の決め方を選んでください' });
+  if (!Number.isInteger(s.youtube.dailyQuota) || s.youtube.dailyQuota < 100) errors.push({ field: 'ytQuota', message: '1日の上限は 100 以上の整数で入力してください' });
   if (s.youtube.minIntervalMs < 1000) errors.push({ field: 'ytInterval', message: '取得間隔は 1 秒以上にしてください' });
   if (s.singular.displaySeconds < 0) errors.push({ field: 'dispSec', message: '表示時間は 0 以上にしてください' });
   if (s.singular.gapSeconds < 0) errors.push({ field: 'gapSec', message: '間隔は 0 以上にしてください' });
@@ -123,6 +130,7 @@ function updateSettings(input) {
   const restartRequired = next.port !== settings.port || next.host !== settings.host;
   settings = next;
   config.save(settings);
+  chat.updateOptions(settings.youtube);
   if (autoTurnedOn) cg.kick();
   broadcast('settings', publicSettings());
   return { settings: publicSettings(), restartRequired };
@@ -199,7 +207,9 @@ const routes = {
     await chat.start({
       apiKey: settings.youtube.apiKey,
       video: settings.youtube.video,
+      pacing: settings.youtube.pacing,
       minIntervalMs: settings.youtube.minIntervalMs,
+      dailyQuota: settings.youtube.dailyQuota,
       skipBacklog: settings.youtube.skipBacklog,
     });
     log(`YouTube の取得を開始しました：${chat.status().title}`);

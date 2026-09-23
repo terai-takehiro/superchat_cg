@@ -17,6 +17,8 @@ function fill(s) {
   $('ytKey-state').textContent = s.youtube.hasApiKey ? '✓ 設定済み' : '';
   $('ytVideo').value = s.youtube.video;
   setRadio('fetchMode', s.youtube.mode);
+  setRadio('pacing', s.youtube.pacing);
+  $('ytQuota').value = s.youtube.dailyQuota;
   $('ytInterval').value = s.youtube.minIntervalMs / 1000;
   $('ytBacklog').value = s.youtube.skipBacklog ? 'skip' : 'load';
 
@@ -37,7 +39,33 @@ function fill(s) {
   $('portInput').value = s.port;
   setRadio('host', s.host);
   dirty = false;
+  renderEstimate();
 }
+
+// 取得間隔の目安を表示
+function renderEstimate() {
+  const quota = Number($('ytQuota').value) || 0;
+  const calls = Math.floor(Math.max(0, quota - 50) / 5);
+  const auto = radio('pacing') !== 'fixed';
+  $('ytInterval').disabled = auto;
+  let text;
+  if (!calls) {
+    text = '1日の上限を入力してください';
+  } else if (auto) {
+    const sec = Math.ceil(86400 / calls);
+    text = `目安：約 ${sec} 秒ごとに取得（1日 ${calls.toLocaleString()} 回）。上限を増やすと間隔が短くなります。`;
+    if (sec > 30) text += ' 長時間配信で反映を速くしたい場合は、Google に上限の引き上げを申請してください。';
+  } else {
+    const iv = Math.max(1, Number($('ytInterval').value) || 5);
+    const hours = (calls * iv) / 3600;
+    text = hours >= 24
+      ? `目安：${iv} 秒ごとなら1日中取得できます。`
+      : `目安：${iv} 秒ごとだと約 ${hours.toFixed(1)} 時間で上限に達し、リセットまで取得が止まります。`;
+  }
+  $('paceEstimate').innerHTML = `<span aria-hidden="true">ℹ</span><div>${esc(text)}</div>`;
+}
+['ytQuota', 'ytInterval'].forEach((id) => $(id).addEventListener('input', renderEstimate));
+document.querySelectorAll('input[name=pacing]').forEach((r) => r.addEventListener('change', renderEstimate));
 
 function collect() {
   return {
@@ -47,6 +75,8 @@ function collect() {
       apiKey: $('ytKey').value.trim(),
       video: $('ytVideo').value.trim(),
       mode: radio('fetchMode'),
+      pacing: radio('pacing'),
+      dailyQuota: Number($('ytQuota').value),
       minIntervalMs: Math.round(Number($('ytInterval').value) * 1000),
       skipBacklog: $('ytBacklog').value === 'skip',
     },
@@ -67,7 +97,7 @@ function collect() {
   };
 }
 
-const LABELS = { port: 'portInput', fetchMode: 'fetchMode', ytInterval: 'ytInterval', dispSec: 'dispSec', gapSec: 'gapSec' };
+const LABELS = { port: 'portInput', fetchMode: 'fetchMode', ytInterval: 'ytInterval', ytQuota: 'ytQuota', pacing: 'pacing', dispSec: 'dispSec', gapSec: 'gapSec' };
 
 function showErrors(errors) {
   document.querySelectorAll('[aria-invalid]').forEach((el) => el.removeAttribute('aria-invalid'));
