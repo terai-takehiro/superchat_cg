@@ -17,6 +17,7 @@ function fill(s) {
   $('ytKey-state').textContent = s.youtube.hasApiKey ? '✓ 設定済み' : '';
   $('ytVideo').value = s.youtube.video;
   setRadio('fetchMode', s.youtube.mode);
+  setRadio('source', s.youtube.source);
   setRadio('pacing', s.youtube.pacing);
   $('ytQuota').value = s.youtube.dailyQuota;
   $('ytInterval').value = s.youtube.minIntervalMs / 1000;
@@ -39,8 +40,15 @@ function fill(s) {
   $('portInput').value = s.port;
   setRadio('host', s.host);
   dirty = false;
+  renderSource();
   renderEstimate();
 }
+
+// API 専用の項目は「YouTube Data API」を選んだときだけ表示
+function renderSource() {
+  $('apiFields').hidden = radio('source') !== 'api';
+}
+document.querySelectorAll('input[name=source]').forEach((r) => r.addEventListener('change', renderSource));
 
 // 取得間隔の目安を表示
 function renderEstimate() {
@@ -75,6 +83,7 @@ function collect() {
       apiKey: $('ytKey').value.trim(),
       video: $('ytVideo').value.trim(),
       mode: radio('fetchMode'),
+      source: radio('source'),
       pacing: radio('pacing'),
       dailyQuota: Number($('ytQuota').value),
       minIntervalMs: Math.round(Number($('ytInterval').value) * 1000),
@@ -97,7 +106,7 @@ function collect() {
   };
 }
 
-const LABELS = { port: 'portInput', fetchMode: 'fetchMode', ytInterval: 'ytInterval', ytQuota: 'ytQuota', pacing: 'pacing', dispSec: 'dispSec', gapSec: 'gapSec' };
+const LABELS = { port: 'portInput', fetchMode: 'fetchMode', ytInterval: 'ytInterval', ytQuota: 'ytQuota', pacing: 'pacing', source: 'source', dispSec: 'dispSec', gapSec: 'gapSec' };
 
 function showErrors(errors) {
   document.querySelectorAll('[aria-invalid]').forEach((el) => el.removeAttribute('aria-invalid'));
@@ -118,7 +127,7 @@ function showErrors(errors) {
 // 必須項目の未入力は「警告」として知らせる（途中まで入力して保存することもできる）
 function missingWarnings(s) {
   const w = [];
-  if (!s.youtube.hasApiKey) w.push('YouTube の API Key');
+  if (s.youtube.source === 'api' && !s.youtube.hasApiKey) w.push('YouTube の API Key');
   if (!s.youtube.video) w.push('配信のURL または 動画ID');
   if (!s.singular.hasAppToken) w.push('Control App Token');
   if (!s.singular.subCompositionName) w.push('サブコンポジション名');

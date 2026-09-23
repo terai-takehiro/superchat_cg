@@ -178,7 +178,7 @@ function renderStatus() {
 
 const hm = (t) => new Date(t).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
 function quotaText(yt) {
-  if (!yt.dailyQuota) return '';
+  if (!yt.dailyQuota) return yt.running && yt.intervalMs ? `取得間隔 <b>約 ${Math.round(yt.intervalMs / 1000)} 秒</b>` : '';
   const lines = [];
   if (yt.running && yt.pausedUntil) {
     lines.push(`<span class="paused">API の上限に達したため ${hm(yt.pausedUntil)} まで休止中（自動で再開）</span>`);

@@ -37,11 +37,13 @@
     <section class="card">
       <div class="card-head"><h2>1. YouTube</h2></div>
       <div class="card-body form-grid">
-        <div class="field">
-          <label for="ytKey">API Key <span class="req">必須</span> <span class="set-state" id="ytKey-state"></span></label>
-          <p class="support" id="ytKey-s">Google Cloud Console で発行した YouTube Data API v3 のキー。設定済みの場合は、変更するときだけ入力してください</p>
-          <input class="input mono" id="ytKey" type="password" aria-describedby="ytKey-s" autocomplete="off" spellcheck="false">
-        </div>
+        <fieldset class="field">
+          <legend class="legend">取得方法</legend>
+          <div class="radio-cards">
+            <label class="radio-card"><input type="radio" name="source" value="web"><b>YouTube から直接（おすすめ）</b><span class="support">API Key 不要・1日の上限なし・遅れは数秒。YouTube の仕様変更で動かなくなることがあります</span></label>
+            <label class="radio-card"><input type="radio" name="source" value="api"><b>YouTube Data API</b><span class="support">Google の公式 API。API Key が必要で、1日の使用上限があります</span></label>
+          </div>
+        </fieldset>
         <div class="field">
           <label for="ytVideo">配信のURL または 動画ID <span class="req">必須</span></label>
           <p class="support" id="ytVideo-s">例：https://www.youtube.com/live/xxxxxxxxxxx</p>
@@ -54,6 +56,13 @@
             <label class="radio-card"><input type="radio" name="fetchMode" value="all"><b>全コメント</b><span class="support">通常コメントも取得（手動で選んで送出）</span></label>
           </div>
         </fieldset>
+        <div class="form-grid api-only" id="apiFields">
+          <h3 class="subhead">YouTube Data API の設定</h3>
+        <div class="field">
+          <label for="ytKey">API Key <span class="req">必須</span> <span class="set-state" id="ytKey-state"></span></label>
+          <p class="support" id="ytKey-s">Google Cloud Console で発行した YouTube Data API v3 のキー。設定済みの場合は、変更するときだけ入力してください</p>
+          <input class="input mono" id="ytKey" type="password" aria-describedby="ytKey-s" autocomplete="off" spellcheck="false">
+        </div>
         <fieldset class="field">
           <legend class="legend">取得間隔の決め方</legend>
           <p class="support">YouTube API には1日の使用上限があり、コメント取得1回で5ユニット使います。長時間の配信では「自動」を選んでください</p>
@@ -75,6 +84,7 @@
           </div>
         </div>
         <div class="notice info" id="paceEstimate" aria-live="polite"></div>
+        </div>
         <div class="field">
           <label for="ytBacklog">取得開始より前のコメント</label>
           <p class="support" id="ytBacklog-s">開始時点でチャット欄に残っているコメントの扱い</p>

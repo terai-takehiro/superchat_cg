@@ -7,8 +7,8 @@ YouTube Live のスーパーチャット（必要なら通常コメントも）�
 ## 必要なもの
 
 - Node.js 18 以上（追加パッケージのインストールは不要）
-- YouTube Data API v3 の API Key
 - Singular Live のコントロールアプリの App Token
+- （取得方法を「YouTube Data API」にする場合のみ）YouTube Data API v3 の API Key
 
 ## 起動
 
@@ -60,7 +60,16 @@ YouTube のスーパーチャットと同じ配色です（日本円は金額、
 | ¥5,000〜 | `#C2185B` |
 | ¥10,000〜 | `#D00000` |
 
-## 長時間配信と API の上限
+## コメントの取得方法
+
+| 取得方法 | 特徴 |
+|---|---|
+| **YouTube から直接**（既定） | ブラウザのチャット欄と同じ仕組みで取得。API Key 不要・1日の上限なし・遅れは数秒で、長時間配信向け。YouTube の公式 API ではないため、YouTube 側の仕様変更で動かなくなる可能性があります |
+| YouTube Data API | Google の公式 API。API Key が必要で、1日の使用上限があります（下記） |
+
+「直接」で取得できなくなった場合は、設定画面で「YouTube Data API」に切り替えてください。
+
+## YouTube Data API の上限
 
 YouTube Data API には 1 日の使用上限（既定 10,000 ユニット）があり、コメント取得 1 回で 5 ユニット使います（「スパチャのみ」でも同じ）。上限は日本時間 16 時（冬時間は 17 時）にリセットされます。
 
@@ -78,7 +87,8 @@ YouTube Data API には 1 日の使用上限（既定 10,000 ユニット）が�
 
 ```
 server.js          HTTP サーバー・API
-lib/youtube.js     YouTube ライブチャット取得
+lib/youtube-web.js YouTube ライブチャット取得（直接）
+lib/youtube.js     YouTube ライブチャット取得（Data API）
 lib/singular.js    Singular 送出キュー
 lib/quota.js       API 使用量の記録（usage.json）
 lib/demo.js        デモ用ダミーコメント

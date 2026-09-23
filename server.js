@@ -8,6 +8,7 @@ const os = require('os');
 const config = require('./lib/config');
 const { YouTubeLiveChat } = require('./lib/youtube');
 const { QuotaTracker } = require('./lib/quota');
+const { YouTubeWebChat } = require('./lib/youtube-web');
 const { DemoChat } = require('./lib/demo');
 const { CgController, testConnection, buildPayload } = require('./lib/singular');
 
@@ -45,7 +46,10 @@ const MAX_HISTORY = 500;
 let history = []; // 新しい順
 const logs = [];
 
-const chat = DEMO ? new DemoChat() : new YouTubeLiveChat(new QuotaTracker());
+// 取得方法：web = YouTube から直接（上限なし） / api = YouTube Data API（1日の上限あり）
+const sources = DEMO ? { demo: new DemoChat() } : { web: new YouTubeWebChat(), api: new YouTubeLiveChat(new QuotaTracker()) };
+const sourceFor = () => (DEMO ? sources.demo : sources[settings.youtube.source] || sources.web);
+let chat = sourceFor();
 const cg = new CgController(() => settings, { dryRun: DEMO });
 
 const clients = new Set();
@@ -66,23 +70,28 @@ function findMessage(id) {
   return history.find((m) => m.id === id) || cg.queue.find((m) => m.id === id) || null;
 }
 
-chat.on('message', (msg) => {
+function onChatMessage(msg) {
   if (settings.youtube.mode === 'superchat' && msg.type === 'text') return;
   msg.sent = false;
   history.unshift(msg);
   if (history.length > MAX_HISTORY) history.length = MAX_HISTORY;
   broadcast('message', msg);
   if (msg.type !== 'text' && settings.singular.autoSend) cg.enqueue(msg);
-});
+}
 let lastYtError = '';
-chat.on('status', (s) => {
+function onChatStatus(s) {
   broadcast('youtube', s);
   if (s.lastError && s.lastError !== lastYtError) {
     if (!s.running) log(`YouTube の取得が止まりました：${s.lastError}`, 'error');
     else log(`YouTube：${s.lastError}`, 'error');
   }
   lastYtError = s.lastError;
-});
+}
+for (const src of Object.values(sources)) {
+  // 使っていない取得方法からのイベントは無視する
+  src.on('message', (m) => src === chat && onChatMessage(m));
+  src.on('status', (st) => src === chat && onChatStatus(st));
+}
 
 cg.on('state', (s) => broadcast('cg', s));
 cg.on('log', (t) => log(t));
@@ -108,6 +117,7 @@ function validate(s) {
   const errors = [];
   if (!Number.isInteger(s.port) || s.port < 1024 || s.port > 65535) errors.push({ field: 'port', message: 'ポート番号は 1024〜65535 の整数で入力してください' });
   if (!['superchat', 'all'].includes(s.youtube.mode)) errors.push({ field: 'fetchMode', message: '取得するコメントを選んでください' });
+  if (!['web', 'api'].includes(s.youtube.source)) errors.push({ field: 'source', message: '取得方法を選んでください' });
   if (!['auto', 'fixed'].includes(s.youtube.pacing)) errors.push({ field: 'pacing', message: '取得間隔の決め方を選んでください' });
   if (!Number.isInteger(s.youtube.dailyQuota) || s.youtube.dailyQuota < 100) errors.push({ field: 'ytQuota', message: '1日の上限は 100 以上の整数で入力してください' });
   if (s.youtube.minIntervalMs < 1000) errors.push({ field: 'ytInterval', message: '取得間隔は 1 秒以上にしてください' });
@@ -130,7 +140,7 @@ function updateSettings(input) {
   const restartRequired = next.port !== settings.port || next.host !== settings.host;
   settings = next;
   config.save(settings);
-  chat.updateOptions(settings.youtube);
+  for (const src of Object.values(sources)) src.updateOptions(settings.youtube);
   if (autoTurnedOn) cg.kick();
   broadcast('settings', publicSettings());
   return { settings: publicSettings(), restartRequired };
@@ -204,6 +214,8 @@ const routes = {
   'PUT /api/settings': (body) => updateSettings(body),
 
   'POST /api/youtube/start': async () => {
+    chat.stop();
+    chat = sourceFor();
     await chat.start({
       apiKey: settings.youtube.apiKey,
       video: settings.youtube.video,
@@ -212,7 +224,7 @@ const routes = {
       dailyQuota: settings.youtube.dailyQuota,
       skipBacklog: settings.youtube.skipBacklog,
     });
-    log(`YouTube の取得を開始しました：${chat.status().title}`);
+    log(`YouTube の取得を開始しました（${settings.youtube.source === 'api' && !DEMO ? 'API' : '直接取得'}）：${chat.status().title}`);
     return chat.status();
   },
   'POST /api/youtube/stop': () => {

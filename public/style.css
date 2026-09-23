@@ -198,3 +198,5 @@ fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
 .live-quota b { color: var(--gray-800); }
 .live-quota .paused { color: #5c4700; font-weight: 700; }
 .input:disabled { background: var(--gray-50); color: var(--gray-536); border-color: var(--gray-200); cursor: not-allowed; }
+.api-only { padding: 20px; border: 1px solid var(--gray-200); border-radius: var(--radius); background: var(--gray-50); }
+.subhead { font-size: 1rem; margin: 0; }
