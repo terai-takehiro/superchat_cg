@@ -46,8 +46,8 @@
         </fieldset>
         <div class="field">
           <label for="ytVideo">配信のURL または 動画ID <span class="req">必須</span></label>
-          <p class="support" id="ytVideo-s">例：https://www.youtube.com/live/xxxxxxxxxxx</p>
-          <input class="input" id="ytVideo" type="text" aria-describedby="ytVideo-s" spellcheck="false">
+          <p class="support" id="ytVideo-s">1行に1つずつ入力します（最大10件）。複数入力すると、すべての配信から同時に取得します<br>例：https://www.youtube.com/live/xxxxxxxxxxx</p>
+          <textarea class="input textarea" id="ytVideo" rows="3" aria-describedby="ytVideo-s" spellcheck="false" autocomplete="off"></textarea>
         </div>
         <fieldset class="field">
           <legend class="legend">取得するコメント</legend>

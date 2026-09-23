@@ -88,6 +88,13 @@ kbd { font-family: "Noto Sans Mono", monospace; font-size: .75rem; border: 1px s
 .live-title { display: flex; align-items: baseline; gap: 12px; flex: 1; min-width: 0; }
 .live-title #liveTitle { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .live-bar .btn { min-width: 200px; }
+.stream-list { display: flex; flex-direction: column; gap: 2px; min-width: 0; margin: 0; padding: 0; list-style: none; font-weight: 400; white-space: normal; }
+.stream-list li { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.stream-list .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+.stream-list .st { flex: none; font-size: 14px; color: var(--gray-536); }
+.stream-list .st.ok { color: var(--green-800); }
+.stream-list .st.err { color: var(--red-900); }
+.label.stream { color: var(--gray-900); background: var(--gray-50); font-weight: 700; }
 
 /* セグメント（48px 以上） */
 .seg { display: inline-flex; border: 2px solid var(--blue-900); border-radius: var(--radius); overflow: hidden; }
@@ -167,6 +174,7 @@ fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
 .input:hover { border-color: var(--gray-900); }
 .input[aria-invalid="true"] { border: 2px solid var(--red-900); }
 .input-short { max-width: 200px; }
+.textarea { display: block; resize: vertical; line-height: 1.7; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 15px; }
 .with-btn { display: flex; gap: 12px; flex-wrap: wrap; }
 .with-btn .input { flex: 1; min-width: 200px; }
 .error-text { color: var(--red-900); font-size: .875rem; margin: 0; font-weight: 700; }

@@ -104,6 +104,7 @@ function renderFeed() {
           ${sel ? '<span class="selected-mark">選択中</span>' : ''}
           <span class="name">${esc(m.name)}</span>
           ${amountBadge(m)}
+          ${m.stream && multiStream() ? `<span class="label stream" title="${esc(m.stream.title)}">配信${m.stream.index}</span>` : ''}
           ${m.type === 'supersticker' ? '<span class="label">ステッカー</span>' : ''}
           ${m.isOwner ? '<span class="label">配信者</span>' : ''}
           ${m.isModerator ? '<span class="label">モデレーター</span>' : ''}
@@ -172,7 +173,7 @@ function renderStatus() {
   const busy = on || yt.reconnecting; // 取得中または自動再接続中は「停止」ボタンを出す
   $('liveBar').classList.toggle('on', on);
   $('liveState').textContent = on ? '取得中' : yt.reconnecting ? '再接続中' : '停止中';
-  $('liveTitle').textContent = yt.title || (state.settings?.youtube.video ? state.settings.youtube.video : '未設定（設定画面で配信URLを入力してください）');
+  $('liveTitle').innerHTML = streamsHtml(yt);
   $('liveQuota').innerHTML = quotaText(yt);
   $('liveBtn').textContent = busy ? '取得を停止する' : '取得を開始する';
   $('liveBtn').className = `btn ${busy ? 'btn-secondary' : 'btn-primary'}`;
@@ -183,6 +184,19 @@ function renderStatus() {
   $('sendModeLabel').textContent = state.settings ? (state.settings.singular.autoSend ? (state.cg.halted ? '自動（一時停止中）' : '自動') : '手動') : '—';
   $('demoBadge').hidden = !state.demo;
 }
+
+// 配信が複数あるときは、配信ごとの状態を並べる
+function streamsHtml(yt) {
+  const list = yt.streams || [];
+  if (!list.length) return '未設定（設定画面で配信URLを入力してください）';
+  if (list.length === 1) return esc(list[0].title);
+  const items = list.map((s) => {
+    const [cls, text] = s.running ? (s.lastError ? ['err', '再試行中'] : ['ok', '取得中']) : s.lastError ? ['err', 'エラー'] : ['', '停止中'];
+    return `<li><span class="label stream">配信${s.index}</span><span class="t">${esc(s.title)}</span><span class="st ${cls}">${text}</span></li>`;
+  });
+  return `<ul class="stream-list">${items.join('')}</ul>`;
+}
+const multiStream = () => (state.youtube.streams || []).length > 1;
 
 const hm = (t) => new Date(t).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
 function quotaText(yt) {
