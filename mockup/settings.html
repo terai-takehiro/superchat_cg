@@ -71,10 +71,7 @@
             <select class="input" id="ytBacklog" aria-describedby="ytBacklog-s"><option>取り込まない</option><option>取り込む</option></select>
           </div>
         </div>
-        <div class="with-btn" style="align-items:center">
-          <button type="button" class="btn btn-primary" id="startBtn">取得を停止する</button>
-          <p class="support" id="ytNow">取得中：「【LIVE】週末雑談配信」</p>
-        </div>
+        <p class="support">コメント取得の開始・停止は<a href="index.html">操作画面</a>で行います。</p>
       </div>
     </section>
 
@@ -182,16 +179,6 @@ document.querySelectorAll('[data-toggle]').forEach(b => b.onclick = () => {
 });
 $('testConn').onclick = () => { $('testResult').textContent = '✓ 接続できました。サブコンポジション「SuperChat」が見つかりました'; };
 $('testSend').onclick = () => { $('testResult').textContent = '✓ テストデータを送出しました（Singular の出力を確認してください）'; };
-let running = true;
-$('startBtn').onclick = e => {
-  running = !running;
-  e.target.textContent = running ? '取得を停止する' : '取得を開始する';
-  $('ytNow').textContent = running ? '取得中：「【LIVE】週末雑談配信」' : '停止中';
-  const s = $('ytStatus'); s.className = 'status ' + (running ? 'ok' : 'off');
-  s.querySelector('.icon').textContent = running ? '✓' : '–';
-  $('ytLabel').textContent = running ? '取得中' : '停止中';
-};
-
 // 保存（入力チェックのデモ）
 $('settingsForm').onsubmit = e => {
   e.preventDefault();

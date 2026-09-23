@@ -73,10 +73,22 @@ kbd { font-family: "Noto Sans Mono", monospace; font-size: .75rem; border: 1px s
 /* ================= 操作画面 ================= */
 .ops { display: grid; grid-template-columns: minmax(0, 1fr) 460px; gap: 24px; align-items: start; }
 @media (max-width: 1100px) { .ops { grid-template-columns: 1fr; } }
-.feed-card { display: flex; flex-direction: column; height: calc(100vh - 106px); min-height: 480px; }
+.feed-card { display: flex; flex-direction: column; height: calc(100vh - 202px); min-height: 480px; }
 .feed-scroll { overflow: auto; flex: 1; padding: 12px; overscroll-behavior: contain; }
-.side { display: grid; gap: 16px; align-content: start; }
-@media (min-width: 1101px) { .side { max-height: calc(100vh - 106px); overflow: auto; overscroll-behavior: contain; padding-bottom: 8px; } }
+.side { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-content: start; min-width: 0; }
+@media (min-width: 1101px) { .side { max-height: calc(100vh - 202px); overflow: auto; overscroll-behavior: contain; padding-bottom: 8px; } }
+
+/* コメント取得バー */
+.live-bar { display: flex; align-items: center; gap: 24px; padding: 12px 16px; margin-bottom: 16px; background: #fff; border: 1px solid var(--gray-200); border-left: 8px solid var(--gray-536); border-radius: var(--radius); flex-wrap: wrap; }
+.live-bar.on { border-left-color: var(--green-800); }
+.live-state { display: flex; align-items: center; gap: 8px; min-width: 88px; }
+.live-dot { width: 14px; height: 14px; border-radius: 50%; background: var(--gray-536); }
+.live-bar.on .live-dot { background: var(--green-800); animation: pulse 1.6s ease-in-out infinite; }
+.live-bar.on .live-state b { color: var(--green-800); }
+@keyframes pulse { 50% { opacity: .35; } }
+.live-title { display: flex; align-items: baseline; gap: 12px; flex: 1; min-width: 0; }
+.live-title #liveTitle { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.live-bar .btn { min-width: 200px; }
 
 /* セグメント（48px 以上） */
 .seg { display: inline-flex; border: 2px solid var(--blue-900); border-radius: var(--radius); overflow: hidden; }

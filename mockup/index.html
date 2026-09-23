@@ -24,6 +24,18 @@
 </header>
 
 <main>
+  <section class="live-bar" id="liveBar" aria-label="コメント取得">
+    <div class="live-state">
+      <span class="live-dot" aria-hidden="true"></span>
+      <b id="liveState">取得中</b>
+    </div>
+    <div class="live-title">
+      <span class="count">配信</span>
+      <span id="liveTitle">【LIVE】週末雑談配信</span>
+    </div>
+    <button class="btn btn-secondary" id="liveBtn">取得を停止する</button>
+  </section>
+
   <div class="ops">
     <!-- コメント一覧 -->
     <section class="card feed-card" aria-labelledby="feed-h">
@@ -133,7 +145,7 @@ function dummy(forceSc) {
 }
 
 // ============ 状態 ============
-const state = { mode: conf.fetchMode, msgs: [], queue: [], current: null, selected: null, outAt: 0, dur: 0 };
+const state = { running: true, mode: conf.fetchMode, msgs: [], queue: [], current: null, selected: null, outAt: 0, dur: 0 };
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const hms = d => d.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -244,7 +256,7 @@ function receive(m) {
   state.msgs.unshift(m); state.msgs = state.msgs.slice(0, 300);
   if (conf.sendMode === 'auto' && m.type !== 'text') enqueue(m); else render();
 }
-setInterval(() => receive(dummy()), 1800);
+setInterval(() => { if (state.running) receive(dummy()); }, 1800);
 for (let i = 0; i < 4; i++) state.msgs.push({ ...dummy(i % 2 === 0), fresh: false });
 
 (function tick() {
@@ -284,6 +296,25 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') { out(); e.preventDefault(); }
   if (e.key === 'n' || e.key === 'N') $('nextBtn').click();
 });
+
+// コメント取得の開始・停止（停止は誤タップ防止のため確認あり）
+function renderLive() {
+  const on = state.running;
+  $('liveBar').classList.toggle('on', on);
+  $('liveState').textContent = on ? '取得中' : '停止中';
+  $('liveBtn').textContent = on ? '取得を停止する' : '取得を開始する';
+  $('liveBtn').className = 'btn ' + (on ? 'btn-secondary' : 'btn-primary');
+  const st = $('ytStatus'); st.className = 'status ' + (on ? 'ok' : 'off');
+  st.querySelector('.icon').textContent = on ? '✓' : '–';
+  $('ytLabel').textContent = on ? '取得中' : '停止中';
+}
+$('liveBtn').onclick = () => {
+  if (state.running && !confirm('コメントの取得を停止しますか？\n停止中に届いたスパチャは取り込まれません。')) return;
+  state.running = !state.running;
+  log(state.running ? 'YouTube の取得を開始しました' : 'YouTube の取得を停止しました');
+  renderLive();
+};
+renderLive();
 
 log('YouTube の取得を開始しました（ダミー）');
 render();
