@@ -113,7 +113,7 @@ function findMessage(id) {
 }
 
 function onChatMessage(msg) {
-  if (settings.youtube.mode === 'superchat' && msg.type === 'text') return;
+  if (!settings.youtube.categories[config.categoryOf(msg)]) return;
   if (history.some((m) => m.id === msg.id)) return;
   msg.sent = false;
   history.unshift(msg);
@@ -160,7 +160,7 @@ function publicSettings() {
 function validate(s) {
   const errors = [];
   if (!Number.isInteger(s.port) || s.port < 1024 || s.port > 65535) errors.push({ field: 'port', message: 'ポート番号は 1024〜65535 の整数で入力してください' });
-  if (!['superchat', 'all'].includes(s.youtube.mode)) errors.push({ field: 'fetchMode', message: '取得するコメントを選んでください' });
+  if (!Object.values(s.youtube.categories).some(Boolean)) errors.push({ field: 'catSuperchat', message: '取得するコメントを 1 つ以上選んでください' });
   if (!['web', 'api'].includes(s.youtube.source)) errors.push({ field: 'source', message: '取得方法を選んでください' });
   if (!['auto', 'fixed'].includes(s.youtube.pacing)) errors.push({ field: 'pacing', message: '取得間隔の決め方を選んでください' });
   if (!Number.isInteger(s.youtube.dailyQuota) || s.youtube.dailyQuota < 100) errors.push({ field: 'ytQuota', message: '1日の上限は 100 以上の整数で入力してください' });
@@ -373,7 +373,7 @@ const routes = {
       cg.remove(msg.id); // テストデータはキューに残さない
       return { ok: false, message: result.message };
     }
-    return { ok: true, message: 'テストデータを送出しました。Singular の出力を確認してください', payload: buildPayload(msg, settings.singular.fields) };
+    return { ok: true, message: 'テストデータを送出しました。Singular の出力を確認してください', payload: buildPayload(msg, settings.singular.fields, settings.singular) };
   },
 };
 

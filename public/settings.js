@@ -16,7 +16,9 @@ function fill(s) {
   $('ytKey').placeholder = s.youtube.hasApiKey ? '設定済み（変更する場合のみ入力）' : '';
   $('ytKey-state').textContent = s.youtube.hasApiKey ? '✓ 設定済み' : '';
   $('ytVideo').value = s.youtube.video;
-  setRadio('fetchMode', s.youtube.mode);
+  $('catSuperchat').checked = s.youtube.categories.superchat;
+  $('catMember').checked = s.youtube.categories.member;
+  $('catNormal').checked = s.youtube.categories.normal;
   setRadio('source', s.youtube.source);
   setRadio('pacing', s.youtube.pacing);
   $('ytQuota').value = s.youtube.dailyQuota;
@@ -32,10 +34,9 @@ function fill(s) {
   $('fComment').value = s.singular.fields.comment;
   $('fIcon').value = s.singular.fields.icon;
   $('fColor').value = s.singular.fields.color;
-  $('fDText').value = s.singular.fields.displayComment;
-  $('fDPrice').value = s.singular.fields.displayAmount;
 
   setRadio('sendMode', s.singular.autoSend ? 'auto' : 'manual');
+  setRadio('customEmoji', s.singular.customEmoji === 'keep' ? 'keep' : 'remove');
   setRadio('swapMode', s.singular.swapInPlace === false ? 'outin' : 'update');
   $('dispSec').value = s.singular.displaySeconds;
   $('gapSec').value = s.singular.gapSeconds;
@@ -85,7 +86,7 @@ function collect() {
     youtube: {
       apiKey: $('ytKey').value.trim(),
       video: $('ytVideo').value.trim(),
-      mode: radio('fetchMode'),
+      categories: { superchat: $('catSuperchat').checked, member: $('catMember').checked, normal: $('catNormal').checked },
       source: radio('source'),
       pacing: radio('pacing'),
       dailyQuota: Number($('ytQuota').value),
@@ -101,18 +102,17 @@ function collect() {
         comment: $('fComment').value.trim(),
         icon: $('fIcon').value.trim(),
         color: $('fColor').value.trim(),
-        displayComment: $('fDText').value.trim(),
-        displayAmount: $('fDPrice').value.trim(),
       },
       autoSend: radio('sendMode') === 'auto',
       swapInPlace: radio('swapMode') !== 'outin',
+      customEmoji: radio('customEmoji') === 'keep' ? 'keep' : 'remove',
       displaySeconds: Number($('dispSec').value),
       gapSeconds: Number($('gapSec').value),
     },
   };
 }
 
-const LABELS = { port: 'portInput', fetchMode: 'fetchMode', ytInterval: 'ytInterval', ytQuota: 'ytQuota', pacing: 'pacing', source: 'source', dispSec: 'dispSec', gapSec: 'gapSec' };
+const LABELS = { port: 'portInput', catSuperchat: 'catSuperchat', ytInterval: 'ytInterval', ytQuota: 'ytQuota', pacing: 'pacing', source: 'source', dispSec: 'dispSec', gapSec: 'gapSec' };
 
 function showErrors(errors) {
   document.querySelectorAll('[aria-invalid]').forEach((el) => el.removeAttribute('aria-invalid'));

@@ -51,9 +51,11 @@
         </div>
         <fieldset class="field">
           <legend class="legend">取得するコメント</legend>
-          <div class="radio-cards">
-            <label class="radio-card"><input type="radio" name="fetchMode" value="superchat"><b>スパチャのみ</b><span class="support">スーパーチャットとスーパーステッカーだけを取得</span></label>
-            <label class="radio-card"><input type="radio" name="fetchMode" value="all"><b>全コメント</b><span class="support">通常コメントも取得（手動で選んで送出）</span></label>
+          <p class="support">取得して操作画面の一覧に出す種類を選びます（複数選択可）。自動送出の対象はスパチャのみです</p>
+          <div class="radio-cards check-cards">
+            <label class="radio-card"><input type="checkbox" id="catSuperchat"><b>スパチャ</b><span class="support">スーパーチャットとスーパーステッカー（メンバーのものも含む）</span></label>
+            <label class="radio-card"><input type="checkbox" id="catMember"><b>メンバーのコメント</b><span class="support">メンバーバッジが付いた人の通常コメント</span></label>
+            <label class="radio-card"><input type="checkbox" id="catNormal"><b>通常コメント</b><span class="support">上記以外のコメント</span></label>
           </div>
         </fieldset>
         <div class="form-grid api-only" id="apiFields">
@@ -121,13 +123,10 @@
               <tr><td><label for="fName">名前</label></td><td><input class="input" id="fName" spellcheck="false"></td></tr>
               <tr><td><label for="fAmount">金額</label></td><td><input class="input" id="fAmount" spellcheck="false"></td></tr>
               <tr><td><label for="fComment">コメント</label></td><td><input class="input" id="fComment" spellcheck="false"></td></tr>
-              <tr><td><label for="fDText">コメント（表示用） <span class="opt">任意</span></label></td><td><input class="input" id="fDText" placeholder="例：d_text" spellcheck="false"></td></tr>
-              <tr><td><label for="fDPrice">金額（表示用） <span class="opt">任意</span></label></td><td><input class="input" id="fDPrice" placeholder="例：d_price" spellcheck="false"></td></tr>
               <tr><td><label for="fIcon">アイコン画像URL <span class="opt">任意</span></label></td><td><input class="input" id="fIcon" placeholder="例：Icon" spellcheck="false"></td></tr>
               <tr><td><label for="fColor">金額帯の色 <span class="opt">任意</span></label></td><td><input class="input" id="fColor" placeholder="例：price_color" spellcheck="false"></td></tr>
             </tbody>
           </table>
-          <p class="support">「表示用」の2つには、コメント・金額と同じ値を入れて送ります。</p>
           <p class="support">通常コメントのときは「金額」を空、「金額帯の色」を <code>auto</code> で送ります。スパチャのときの「金額帯の色」は YouTube と同じ色を <code>#d00000</code> の形式で送ります（空欄にすると送らず、Singular 側の自動判定になります）</p>
         </div>
         <div class="with-btn" style="align-items:center">
@@ -146,6 +145,14 @@
           <div class="radio-cards">
             <label class="radio-card"><input type="radio" name="sendMode" value="auto"><b>自動</b><span class="support">スパチャが届いたら順番にキューへ入れて自動で送出</span></label>
             <label class="radio-card"><input type="radio" name="sendMode" value="manual"><b>手動</b><span class="support">操作画面で選んだものだけを送出</span></label>
+          </div>
+        </fieldset>
+        <fieldset class="field">
+          <legend class="legend">チャンネル独自の絵文字（<code>:_KUSA:</code> など）</legend>
+          <p class="support">メンバー用スタンプなどは YouTube 上では画像のため、文字としては名前しか送れません。普通の絵文字（😀 など）はそのまま送ります</p>
+          <div class="radio-cards">
+            <label class="radio-card"><input type="radio" name="customEmoji" value="remove"><b>取り除く（おすすめ）</b><span class="support">CG には送らず、コメントの文字だけを出します</span></label>
+            <label class="radio-card"><input type="radio" name="customEmoji" value="keep"><b>そのまま送る</b><span class="support"><code>:_KUSA:</code> のような名前のまま送ります</span></label>
           </div>
         </fieldset>
         <fieldset class="field">

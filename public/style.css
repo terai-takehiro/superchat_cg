@@ -200,3 +200,6 @@ fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
 .input:disabled { background: var(--gray-50); color: var(--gray-536); border-color: var(--gray-200); cursor: not-allowed; }
 .api-only { padding: 20px; border: 1px solid var(--gray-200); border-radius: var(--radius); background: var(--gray-50); }
 .subhead { font-size: 1rem; margin: 0; }
+.yt-emoji { height: 1.4em; width: auto; vertical-align: -0.3em; margin: 0 1px; }
+.check-cards { grid-template-columns: repeat(3, 1fr); }
+@media (max-width: 700px) { .check-cards { grid-template-columns: 1fr; } }

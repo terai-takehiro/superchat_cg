@@ -21,7 +21,7 @@
   1. 操作画面の上の「設定」を開く
   2. 配信の URL と Singular の Control App Token を入力して保存
      （サブコンポジション名・フィールド ID は「スーパーチャット」コンポジションに合わせて
-       superchat / name / price / text / price_color / d_text / d_price が最初から入っています）
+       superchat / name / price / text / price_color が最初から入っています）
   3. 「保存してテストデータを送出」で Singular に CG が出るか確認
   4. 「操作」画面に戻り「取得を開始する」
 
