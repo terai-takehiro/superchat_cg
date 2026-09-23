@@ -196,8 +196,8 @@ function renderQueue() {
   $('nextBtn').disabled = !state.queue.length || locked();
   $('queue').innerHTML = state.queue.map((m, i) => `
     <li class="qitem" style="${tierStyle(m)}">
-      <span class="n">${i + 1}</span><span class="sw" aria-hidden="true"></span>
-      <span class="t"><b>${esc(m.name)}</b> ${esc(m.amount)}　${esc(m.comment)}</span>
+      <span class="n">${i + 1}</span>
+      <span class="t"><b>${esc(m.name)}</b> ${m.amount ? `<span class="amount">${esc(m.amount)}</span>` : ''}　${esc(m.comment)}</span>
       <button class="icon-btn" data-up="${m.id}" ${i === 0 ? 'disabled' : ''} aria-label="${esc(m.name)}を先頭へ移動">↑</button>
       <button class="icon-btn" data-del="${m.id}" aria-label="${esc(m.name)}をキューから削除">✕</button>
     </li>`).join('') || '<li class="empty">キューは空です</li>';
