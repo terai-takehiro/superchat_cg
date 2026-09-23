@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>スーパーチャットCG（モックアップ）</title>
+<style>
+  :root {
+    --bg: #0f1115; --panel: #171a21; --panel2: #1e222b; --line: #2a2f3a;
+    --text: #e6e8ec; --muted: #8b93a3; --accent: #3d8bfd; --onair: #e5484d; --ok: #30a46c; --warn: #f5a524;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 13px/1.5 "Hiragino Sans", "Noto Sans JP", "Yu Gothic UI", sans-serif; }
+  header { display: flex; align-items: center; gap: 16px; padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--panel); position: sticky; top: 0; z-index: 5; }
+  header h1 { font-size: 15px; margin: 0; font-weight: 700; }
+  .mock { font-size: 11px; color: var(--warn); border: 1px solid var(--warn); padding: 1px 6px; border-radius: 4px; }
+  .spacer { flex: 1; }
+  .badge { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; background: var(--panel2); border: 1px solid var(--line); font-size: 12px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+  .dot.on { background: var(--ok); box-shadow: 0 0 6px var(--ok); }
+  .dot.err { background: var(--onair); }
+  .port { font-family: ui-monospace, Menlo, Consolas, monospace; color: var(--muted); }
+
+  main { display: grid; grid-template-columns: 320px 1fr 380px; gap: 12px; padding: 12px; height: calc(100vh - 50px); }
+  @media (max-width: 1100px) { main { grid-template-columns: 1fr; height: auto; } }
+  section { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; display: flex; flex-direction: column; min-height: 0; }
+  section > h2 { font-size: 12px; letter-spacing: .05em; color: var(--muted); margin: 0; padding: 10px 12px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 8px; }
+  .scroll { overflow: auto; padding: 12px; flex: 1; min-height: 0; }
+
+  /* 設定 */
+  details { border: 1px solid var(--line); border-radius: 6px; margin-bottom: 10px; background: var(--panel2); }
+  summary { cursor: pointer; padding: 8px 10px; font-weight: 700; }
+  .fields { padding: 4px 10px 10px; display: grid; gap: 8px; }
+  label { display: grid; gap: 3px; color: var(--muted); font-size: 12px; }
+  input[type=text], input[type=password], input[type=number], select {
+    width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 5px; padding: 6px 8px; font: inherit;
+  }
+  .row { display: flex; gap: 8px; }
+  .row > * { flex: 1; }
+  .hint { font-size: 11px; color: var(--muted); }
+  button { font: inherit; border: 1px solid var(--line); background: var(--panel2); color: var(--text); border-radius: 5px; padding: 6px 10px; cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.danger { background: var(--onair); border-color: var(--onair); color: #fff; }
+  button.small { padding: 2px 8px; font-size: 12px; }
+  .seg { display: flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+  .seg button { flex: 1; border: 0; border-radius: 0; background: var(--bg); color: var(--muted); }
+  .seg button.active { background: var(--accent); color: #fff; }
+
+  /* フィード */
+  .feed-tools { display: flex; gap: 8px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--line); }
+  .feed { display: grid; gap: 6px; }
+  .msg { display: grid; grid-template-columns: 36px 1fr auto; gap: 10px; align-items: start; padding: 8px 10px; border-radius: 6px; background: var(--panel2); border-left: 4px solid transparent; }
+  .msg.sc { border-left-color: var(--tier); background: color-mix(in srgb, var(--tier) 14%, var(--panel2)); }
+  .msg.sent { opacity: .45; }
+  .avatar { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; color: #fff; }
+  .msg .head { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .msg .name { font-weight: 700; }
+  .msg .amount { font-weight: 800; color: var(--tier); }
+  .msg .time { color: var(--muted); font-size: 11px; }
+  .msg .comment { margin-top: 2px; word-break: break-word; }
+  .msg .actions { display: flex; flex-direction: column; gap: 4px; }
+  .tag { font-size: 10px; padding: 0 5px; border-radius: 3px; background: var(--line); color: var(--muted); }
+
+  /* ON AIR */
+  .onair { border: 1px solid var(--line); border-radius: 8px; padding: 10px; margin-bottom: 12px; }
+  .onair.live { border-color: var(--onair); box-shadow: 0 0 0 1px var(--onair) inset; }
+  .onair-title { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-weight: 700; }
+  .onair-lamp { background: var(--line); color: var(--muted); font-size: 11px; padding: 1px 8px; border-radius: 3px; }
+  .onair.live .onair-lamp { background: var(--onair); color: #fff; }
+  .progress { height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; margin-top: 8px; }
+  .progress > div { height: 100%; background: var(--onair); width: 0; }
+
+  /* CG プレビュー（Singular 側の見え方のイメージ） */
+  .preview { aspect-ratio: 16/9; background: linear-gradient(135deg, #2b3445, #11151c); border-radius: 6px; position: relative; overflow: hidden; }
+  .preview .grid { position: absolute; inset: 0; background-image: linear-gradient(#ffffff08 1px, transparent 1px), linear-gradient(90deg, #ffffff08 1px, transparent 1px); background-size: 20px 20px; }
+  .lt { position: absolute; left: 6%; bottom: 10%; width: 70%; transform: translateX(-120%); transition: transform .45s cubic-bezier(.2,.8,.2,1); }
+  .lt.in { transform: translateX(0); }
+  .lt .top { display: flex; justify-content: space-between; gap: 8px; padding: 5px 10px; background: var(--tier, #d00); color: #fff; font-weight: 800; font-size: 12px; border-radius: 4px 4px 0 0; }
+  .lt .body { background: #fff; color: #111; padding: 6px 10px; font-size: 12px; border-radius: 0 0 4px 4px; min-height: 28px; }
+
+  .queue { display: grid; gap: 6px; }
+  .qitem { display: flex; align-items: center; gap: 8px; padding: 6px 8px; background: var(--panel2); border-radius: 5px; border-left: 3px solid var(--tier, var(--line)); }
+  .qitem .n { color: var(--muted); width: 18px; text-align: right; }
+  .qitem .t { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .empty { color: var(--muted); text-align: center; padding: 12px; }
+  .sub { font-size: 12px; color: var(--muted); margin: 14px 0 6px; display: flex; justify-content: space-between; align-items: center; }
+  .log { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11px; color: var(--muted); max-height: 120px; overflow: auto; background: var(--bg); border-radius: 5px; padding: 6px 8px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>スーパーチャットCG</h1>
+  <span class="mock">MOCKUP・ダミーデータ</span>
+  <span class="spacer"></span>
+  <span class="badge"><span class="dot on" id="ytDot"></span>YouTube <span id="ytLabel">取得中</span></span>
+  <span class="badge"><span class="dot on"></span>Singular 接続OK</span>
+  <span class="badge port">http://localhost:<span id="portLabel">3000</span></span>
+</header>
+
+<main>
+  <!-- 左：設定 -->
+  <section>
+    <h2>設定</h2>
+    <div class="scroll">
+      <details open>
+        <summary>YouTube</summary>
+        <div class="fields">
+          <label>API Key<input type="password" value="AIzaSyDUMMYDUMMYDUMMY"></label>
+          <label>配信 URL / 動画 ID<input type="text" value="https://www.youtube.com/live/abcdEFGhijk"></label>
+          <label>取得モード
+            <div class="seg" id="modeSeg">
+              <button data-mode="superchat" class="active">スパチャのみ</button>
+              <button data-mode="all">全コメント</button>
+            </div>
+          </label>
+          <div class="row">
+            <label>取得間隔（秒）<input type="number" value="5" min="1"></label>
+            <label>起動前のコメント<select><option>無視する</option><option>取り込む</option></select></label>
+          </div>
+          <div class="row">
+            <button class="primary" id="startBtn">取得停止</button>
+          </div>
+          <div class="hint">配信タイトル：【LIVE】週末雑談配信</div>
+        </div>
+      </details>
+
+      <details open>
+        <summary>Singular Live</summary>
+        <div class="fields">
+          <label>Control App Token<input type="password" value="DUMMYTOKEN123456"></label>
+          <label>サブコンポジション名<input type="text" value="SuperChat"></label>
+          <div class="row">
+            <label>名前 フィールドID<input type="text" value="Name"></label>
+            <label>金額 フィールドID<input type="text" value="Amount"></label>
+          </div>
+          <div class="row">
+            <label>コメント フィールドID<input type="text" value="Comment"></label>
+            <label>アイコン フィールドID<input type="text" placeholder="（任意）"></label>
+          </div>
+          <div class="row">
+            <button>接続テスト</button>
+            <button id="testSend">テスト送出</button>
+          </div>
+        </div>
+      </details>
+
+      <details open>
+        <summary>送出</summary>
+        <div class="fields">
+          <label>送出方法
+            <div class="seg" id="sendSeg">
+              <button data-send="auto" class="active">自動（キュー順）</button>
+              <button data-send="manual">手動</button>
+            </div>
+          </label>
+          <div class="row">
+            <label>表示秒数<input type="number" id="dispSec" value="8" min="0"></label>
+            <label>次までの間隔（秒）<input type="number" value="1" min="0"></label>
+          </div>
+          <div class="hint">表示秒数 0 ＝ OUT ボタンを押すまで表示</div>
+        </div>
+      </details>
+
+      <details>
+        <summary>サーバー</summary>
+        <div class="fields">
+          <label>ポート番号<input type="number" id="portInput" value="3000" min="1" max="65535"></label>
+          <div class="hint">変更はアプリ再起動後に反映。起動時に <code>--port 3001</code> でも指定可。</div>
+        </div>
+      </details>
+
+      <button class="primary" style="width:100%">設定を保存</button>
+    </div>
+  </section>
+
+  <!-- 中央：コメントフィード -->
+  <section>
+    <h2>コメント <span id="count" class="tag">0</span></h2>
+    <div class="feed-tools">
+      <span class="hint" id="modeHint">スパチャのみ表示中</span>
+      <span class="spacer"></span>
+      <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="pause"> 一時停止</label>
+      <button class="small" id="clearFeed">クリア</button>
+    </div>
+    <div class="scroll"><div class="feed" id="feed"></div></div>
+  </section>
+
+  <!-- 右：送出 -->
+  <section>
+    <h2>送出</h2>
+    <div class="scroll">
+      <div class="onair" id="onair">
+        <div class="onair-title"><span class="onair-lamp">ON AIR</span><span id="onairName" style="flex:1">—</span><button class="danger small" id="outBtn">OUT</button></div>
+        <div class="preview">
+          <div class="grid"></div>
+          <div class="lt" id="lt"><div class="top"><span id="ltName"></span><span id="ltAmount"></span></div><div class="body" id="ltComment"></div></div>
+        </div>
+        <div class="progress"><div id="bar"></div></div>
+      </div>
+
+      <div class="sub"><span>待機キュー（<span id="qcount">0</span>）</span><button class="small" id="clearQ">全削除</button></div>
+      <div class="queue" id="queue"></div>
+
+      <div class="sub"><span>ログ</span></div>
+      <div class="log" id="log"></div>
+    </div>
+  </section>
+</main>
+
+<script>
+// ===== ダミーデータ生成（モックアップ用） =====
+const NAMES = ['たなか', 'Sakura Ch.', 'ぽん太', 'ゆうき', 'Mika', 'やまだ太郎', 'Neko_neko', 'けんと', 'Aoi', 'しろくま'];
+const TEXTS = ['こんばんは！', '今日も楽しみにしてました', 'いつも応援してます！！', '初見です', 'その話もっと聞きたい', 'おつかれさまです', 'ナイス！', '声かわいい', '草', 'BGMいいですね'];
+const SC_TEXTS = ['いつも元気もらってます！少しですが応援です', '誕生日おめでとう！', 'グッズ代にしてください', '', '昨日の配信最高でした', '受験合格しました！報告です'];
+const AMOUNTS = [100, 200, 500, 1000, 2000, 5000, 10000, 50000];
+// YouTube のスパチャ色（金額帯）
+function tierColor(yen) {
+  if (yen >= 10000) return '#e62117';
+  if (yen >= 5000) return '#e91e63';
+  if (yen >= 2000) return '#f57c00';
+  if (yen >= 1000) return '#ffca28';
+  if (yen >= 500) return '#1de9b6';
+  if (yen >= 200) return '#00e5ff';
+  return '#1e88e5';
+}
+const pick = a => a[Math.floor(Math.random() * a.length)];
+let seq = 0;
+function dummy(forceSc) {
+  const sc = forceSc || Math.random() < 0.25;
+  const yen = pick(AMOUNTS);
+  return {
+    id: 'm' + (++seq), name: pick(NAMES), time: new Date(),
+    type: sc ? 'superchat' : 'text',
+    amount: sc ? '¥' + yen.toLocaleString() : '',
+    tier: sc ? tierColor(yen) : null,
+    comment: sc ? pick(SC_TEXTS) : pick(TEXTS),
+    member: Math.random() < 0.2,
+    sent: false,
+  };
+}
+
+// ===== 状態 =====
+const state = { mode: 'superchat', send: 'auto', msgs: [], queue: [], current: null, outAt: 0, total: 0, running: true };
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const hhmm = d => d.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+function log(t) { const el = $('log'); el.insertAdjacentHTML('afterbegin', `<div>${hhmm(new Date())} ${esc(t)}</div>`); }
+const visible = m => state.mode === 'all' || m.type !== 'text';
+
+// ===== 描画 =====
+function renderFeed() {
+  const list = state.msgs.filter(visible);
+  $('count').textContent = list.length;
+  $('feed').innerHTML = list.map(m => `
+    <div class="msg ${m.type !== 'text' ? 'sc' : ''} ${m.sent ? 'sent' : ''}" style="--tier:${m.tier || 'transparent'}">
+      <div class="avatar" style="background:hsl(${m.name.length * 47 % 360} 45% 45%)">${esc(m.name[0])}</div>
+      <div>
+        <div class="head">
+          <span class="name">${esc(m.name)}</span>
+          ${m.member ? '<span class="tag">メンバー</span>' : ''}
+          ${m.amount ? `<span class="amount">${esc(m.amount)}</span>` : ''}
+          <span class="time">${hhmm(m.time)}</span>
+        </div>
+        <div class="comment">${m.comment ? esc(m.comment) : '<span class="hint">（コメントなし）</span>'}</div>
+      </div>
+      <div class="actions">
+        <button class="small primary" data-now="${m.id}">送出</button>
+        <button class="small" data-q="${m.id}">キュー</button>
+      </div>
+    </div>`).join('') || '<div class="empty">コメント待機中…</div>';
+}
+function renderQueue() {
+  $('qcount').textContent = state.queue.length;
+  $('queue').innerHTML = state.queue.map((m, i) => `
+    <div class="qitem" style="--tier:${m.tier || 'var(--line)'}">
+      <span class="n">${i + 1}</span>
+      <span class="t"><b>${esc(m.name)}</b> ${esc(m.amount)} ${esc(m.comment)}</span>
+      <button class="small" data-up="${m.id}" title="先頭へ">↑</button>
+      <button class="small" data-del="${m.id}" title="削除">×</button>
+    </div>`).join('') || '<div class="empty">キューは空です</div>';
+}
+function renderOnair() {
+  const m = state.current;
+  $('onair').classList.toggle('live', !!m);
+  $('onairName').textContent = m ? `${m.name} ${m.amount}` : '—';
+  $('lt').classList.toggle('in', !!m);
+  if (m) {
+    $('lt').style.setProperty('--tier', m.tier || '#3d8bfd');
+    $('ltName').textContent = m.name;
+    $('ltAmount').textContent = m.amount;
+    $('ltComment').textContent = m.comment;
+  }
+}
+function render() { renderFeed(); renderQueue(); renderOnair(); }
+
+// ===== 送出ロジック（実装時はサーバー側 CgController が担当） =====
+let outTimer, nextTimer;
+function show(m) {
+  state.current = m; m.sent = true;
+  const sec = Number($('dispSec').value) || 0;
+  state.outAt = sec > 0 ? Date.now() + sec * 1000 : 0;
+  state.dur = sec * 1000;
+  clearTimeout(outTimer);
+  if (sec > 0) outTimer = setTimeout(out, sec * 1000);
+  log(`IN  → ${m.name} ${m.amount}`);
+  render();
+}
+function out() {
+  clearTimeout(outTimer);
+  if (state.current) log(`OUT ← ${state.current.name}`);
+  state.current = null; state.outAt = 0;
+  render();
+  clearTimeout(nextTimer);
+  nextTimer = setTimeout(next, 1000);
+}
+function next() { if (!state.current && state.queue.length) show(state.queue.shift()); }
+function enqueue(m, front) {
+  state.queue = state.queue.filter(x => x.id !== m.id);
+  front ? state.queue.unshift(m) : state.queue.push(m);
+  render(); next();
+}
+
+// 受信
+function receive(m) {
+  state.msgs.unshift(m);
+  state.msgs = state.msgs.slice(0, 300);
+  // 自動送出はスパチャのみ（通常コメントは手動で「送出」/「キュー」）
+  if (state.send === 'auto' && m.type !== 'text') enqueue(m);
+  render();
+}
+setInterval(() => { if (state.running && !$('pause').checked) receive(dummy()); }, 1600);
+for (let i = 0; i < 4; i++) state.msgs.push(dummy(i % 2 === 0));
+
+// 進捗バー
+(function tick() {
+  const bar = $('bar');
+  if (state.current && state.outAt) bar.style.width = Math.max(0, (state.outAt - Date.now()) / state.dur * 100) + '%';
+  else bar.style.width = state.current ? '100%' : '0';
+  requestAnimationFrame(tick);
+})();
+
+// ===== イベント =====
+document.addEventListener('click', e => {
+  const t = e.target.closest('button'); if (!t) return;
+  const find = id => state.msgs.find(m => m.id === id) || state.queue.find(m => m.id === id);
+  if (t.dataset.now) { const m = find(t.dataset.now); enqueue(m, true); if (state.current) out(); }
+  if (t.dataset.q) enqueue(find(t.dataset.q));
+  if (t.dataset.del) { state.queue = state.queue.filter(m => m.id !== t.dataset.del); render(); }
+  if (t.dataset.up) enqueue(find(t.dataset.up), true);
+  if (t.dataset.mode) {
+    state.mode = t.dataset.mode;
+    document.querySelectorAll('#modeSeg button').forEach(b => b.classList.toggle('active', b === t));
+    $('modeHint').textContent = state.mode === 'all' ? '全コメント表示中' : 'スパチャのみ表示中';
+    render();
+  }
+  if (t.dataset.send) {
+    state.send = t.dataset.send;
+    document.querySelectorAll('#sendSeg button').forEach(b => b.classList.toggle('active', b === t));
+    log(state.send === 'auto' ? '自動送出 ON（スパチャを自動でキューへ）' : '手動送出モード');
+  }
+});
+$('outBtn').onclick = out;
+$('clearQ').onclick = () => { state.queue = []; render(); };
+$('clearFeed').onclick = () => { state.msgs = []; render(); };
+$('testSend').onclick = () => enqueue({ ...dummy(true), name: 'テスト太郎', comment: 'テスト送出です' }, true);
+$('portInput').oninput = e => $('portLabel').textContent = e.target.value;
+$('startBtn').onclick = e => {
+  state.running = !state.running;
+  e.target.textContent = state.running ? '取得停止' : '取得開始';
+  e.target.classList.toggle('primary', !state.running);
+  $('ytDot').classList.toggle('on', state.running);
+  $('ytLabel').textContent = state.running ? '取得中' : '停止中';
+};
+
+log('YouTube ライブチャット取得開始（ダミー）');
+render();
+</script>
+</body>
+</html>
