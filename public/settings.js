@@ -34,6 +34,7 @@ function fill(s) {
   $('fColor').value = s.singular.fields.color;
 
   setRadio('sendMode', s.singular.autoSend ? 'auto' : 'manual');
+  setRadio('customEmoji', s.singular.customEmoji === 'keep' ? 'keep' : 'remove');
   setRadio('swapMode', s.singular.swapInPlace === false ? 'outin' : 'update');
   $('dispSec').value = s.singular.displaySeconds;
   $('gapSec').value = s.singular.gapSeconds;
@@ -102,6 +103,7 @@ function collect() {
       },
       autoSend: radio('sendMode') === 'auto',
       swapInPlace: radio('swapMode') !== 'outin',
+      customEmoji: radio('customEmoji') === 'keep' ? 'keep' : 'remove',
       displaySeconds: Number($('dispSec').value),
       gapSeconds: Number($('gapSec').value),
     },

@@ -373,7 +373,7 @@ const routes = {
       cg.remove(msg.id); // テストデータはキューに残さない
       return { ok: false, message: result.message };
     }
-    return { ok: true, message: 'テストデータを送出しました。Singular の出力を確認してください', payload: buildPayload(msg, settings.singular.fields) };
+    return { ok: true, message: 'テストデータを送出しました。Singular の出力を確認してください', payload: buildPayload(msg, settings.singular.fields, settings.singular) };
   },
 };
 

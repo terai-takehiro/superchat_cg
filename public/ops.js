@@ -59,6 +59,15 @@ const viewMode = () => (fetchAll() ? state.view || 'all' : 'superchat');
 const visible = (m) => (viewMode() === 'all' || m.type !== 'text') && !($('hideSent').checked && m.sent);
 const tierStyle = (m) => `--tier:${m.colors?.header || 'var(--gray-200)'};--tier-fg:${m.colors?.text || '#fff'}`;
 const amountBadge = (m) => (m.amount ? `<span class="amount" style="${tierStyle(m)}"><span class="visually-hidden">スーパーチャット </span>${esc(m.amount)}</span>` : '');
+// コメント本文を HTML に。チャンネル独自の絵文字（:_name:）は画像で表示する
+function commentHtml(m) {
+  const map = m.emojis || {};
+  return esc(m.comment || '').replace(/:_[^:\s]+:/g, (code) => {
+    const url = map[code];
+    return url ? `<img class="yt-emoji" src="${esc(url)}" alt="${code}" title="${code}" referrerpolicy="no-referrer">` : code;
+  });
+}
+
 function avatar(m) {
   if (m.icon) return `<span class="avatar" aria-hidden="true"><img src="${esc(m.icon)}" alt="" loading="lazy" referrerpolicy="no-referrer"></span>`;
   const hue = [...(m.name || '?')].reduce((a, c) => a + c.charCodeAt(0), 0) % 360;
@@ -105,7 +114,7 @@ function renderFeed() {
           ${inQueue(m.id) ? '<span class="label queued">キュー待ち</span>' : ''}
           <time class="time">${hms(m.publishedAt)}</time>
         </span>
-        <span class="comment ${m.comment ? '' : 'none'}" style="display:block">${m.comment ? esc(m.comment) : '（コメントなし）'}</span>
+        <span class="comment ${m.comment ? '' : 'none'}" style="display:block">${m.comment ? commentHtml(m) : '（コメントなし）'}</span>
       </span>
     </button></li>`;
   }).join('') || `<li class="empty">${state.youtube.running ? '表示するコメントはまだありません' : 'コメントの取得を開始してください'}</li>`;
@@ -118,7 +127,7 @@ function renderPicked() {
   const box = $('picked');
   box.classList.toggle('has', !!m);
   box.innerHTML = m
-    ? `<span class="meta"><b>${esc(m.name)}</b>${amountBadge(m)}</span><span class="c">${esc(m.comment || '（コメントなし）')}</span>`
+    ? `<span class="meta"><b>${esc(m.name)}</b>${amountBadge(m)}</span><span class="c">${m.comment ? commentHtml(m) : '（コメントなし）'}</span>`
     : '<span class="none">左の一覧からコメントを選んでください</span>';
   $('sendBtn').disabled = !m || locked();
   $('queueBtn').disabled = !m || inQueue(m.id);
@@ -134,7 +143,7 @@ function renderQueue() {
   $('queue').innerHTML = q.map((m, i) => `
     <li class="qitem">
       <span class="n">${i + 1}</span>
-      <span class="t"><b>${esc(m.name)}</b> ${amountBadge(m)}　${esc(m.comment)}</span>
+      <span class="t"><b>${esc(m.name)}</b> ${amountBadge(m)}　${commentHtml(m)}</span>
       <button class="icon-btn" data-top="${esc(m.id)}" ${i === 0 ? 'disabled' : ''} aria-label="${esc(m.name)}を先頭へ移動">↑</button>
       <button class="icon-btn" data-del="${esc(m.id)}" aria-label="${esc(m.name)}をキューから削除">✕</button>
     </li>`).join('') || '<li class="empty">キューは空です</li>';
@@ -153,7 +162,9 @@ function renderOnair() {
     $('lt').style.setProperty('--tier-fg', m.colors?.text || '#fff');
     $('ltName').textContent = m.name;
     $('ltAmount').textContent = m.amount || '';
-    $('ltComment').textContent = m.comment || '';
+    // CG に送る内容に合わせる（チャンネル独自の絵文字は設定により取り除く）
+    const keep = state.settings?.singular.customEmoji === 'keep';
+    $('ltComment').textContent = keep ? m.comment || '' : (m.comment || '').replace(/:_[^:\s]+:/g, '').replace(/[ \u3000]{2,}/g, ' ').trim();
   }
 }
 
