@@ -51,9 +51,11 @@
         </div>
         <fieldset class="field">
           <legend class="legend">取得するコメント</legend>
-          <div class="radio-cards">
-            <label class="radio-card"><input type="radio" name="fetchMode" value="superchat"><b>スパチャのみ</b><span class="support">スーパーチャットとスーパーステッカーだけを取得</span></label>
-            <label class="radio-card"><input type="radio" name="fetchMode" value="all"><b>全コメント</b><span class="support">通常コメントも取得（手動で選んで送出）</span></label>
+          <p class="support">取得して操作画面の一覧に出す種類を選びます（複数選択可）。自動送出の対象はスパチャのみです</p>
+          <div class="radio-cards check-cards">
+            <label class="radio-card"><input type="checkbox" id="catSuperchat"><b>スパチャ</b><span class="support">スーパーチャットとスーパーステッカー（メンバーのものも含む）</span></label>
+            <label class="radio-card"><input type="checkbox" id="catMember"><b>メンバーのコメント</b><span class="support">メンバーバッジが付いた人の通常コメント</span></label>
+            <label class="radio-card"><input type="checkbox" id="catNormal"><b>通常コメント</b><span class="support">上記以外のコメント</span></label>
           </div>
         </fieldset>
         <div class="form-grid api-only" id="apiFields">

@@ -11,7 +11,6 @@ const state = {
   youtube: { running: false, title: '', lastError: '' },
   settings: null,
   selectedId: null,
-  view: localStorageGet('viewMode') || null,
   demo: false,
   freshIds: new Set(),
 };
@@ -53,10 +52,9 @@ async function guarded(fn) {
 // ---------- 表示ヘルパー ----------
 const find = (id) => state.messages.find((m) => m.id === id) || state.cg.queue.find((m) => m.id === id) || (state.cg.current?.id === id ? state.cg.current : null);
 const inQueue = (id) => state.cg.queue.some((q) => q.id === id);
-// 設定で「スパチャのみ」取得なら通常コメントは届かないので、表示切替も出さない
-const fetchAll = () => state.settings?.youtube.mode === 'all';
-const viewMode = () => (fetchAll() ? state.view || 'all' : 'superchat');
-const visible = (m) => (viewMode() === 'all' || m.type !== 'text') && !($('hideSent').checked && m.sent);
+// コメントの種類（メンバーのスパチャはスパチャ扱い）。設定で選んだ種類だけを表示する
+const categoryOf = (m) => (m.type !== 'text' ? 'superchat' : m.isMember ? 'member' : 'normal');
+const visible = (m) => (state.settings?.youtube.categories?.[categoryOf(m)] ?? true) && !($('hideSent').checked && m.sent);
 const tierStyle = (m) => `--tier:${m.colors?.header || 'var(--gray-200)'};--tier-fg:${m.colors?.text || '#fff'}`;
 const amountBadge = (m) => (m.amount ? `<span class="amount" style="${tierStyle(m)}"><span class="visually-hidden">スーパーチャット </span>${esc(m.amount)}</span>` : '');
 // コメント本文を HTML に。チャンネル独自の絵文字（:_name:）は画像で表示する
@@ -184,8 +182,6 @@ function renderStatus() {
   $('ytLabel').textContent = on ? (yt.lastError ? '再試行中' : '取得中') : yt.reconnecting ? '再接続中' : yt.lastError ? 'エラー' : '停止中';
   $('sendModeLabel').textContent = state.settings ? (state.settings.singular.autoSend ? (state.cg.halted ? '自動（一時停止中）' : '自動') : '手動') : '—';
   $('demoBadge').hidden = !state.demo;
-  $('modeSeg').hidden = !fetchAll();
-  document.querySelectorAll('input[name=mode]').forEach((r) => { r.checked = r.value === viewMode(); });
 }
 
 const hm = (t) => new Date(t).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
@@ -319,9 +315,6 @@ $('liveBtn').onclick = async () => {
     renderStatus();
   }
 };
-document.querySelectorAll('input[name=mode]').forEach((r) => {
-  r.onchange = () => { state.view = r.value; localStorageSet('viewMode', r.value); renderFeed(); };
-});
 $('hideSent').onchange = renderFeed;
 $('pause').onchange = renderFeed;
 
