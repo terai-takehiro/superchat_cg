@@ -25,6 +25,7 @@ function parseArgs(argv) {
     else if (a === '--demo') out.demo = true;
     else if (a === '--no-open') out.noOpen = true;
     else if (a === '--open') out.open = true;
+    else if (a === '--no-tray') out.noTray = true;
     else if (a === '--help' || a === '-h') out.help = true;
   }
   return out;
@@ -39,6 +40,25 @@ if (args.help) {
   --open / --no-open  起動時にブラウザで操作画面を開く／開かない（exe 版は既定で開く）`);
   process.exit(0);
 }
+
+// Windows の exe はコマンドプロンプトを出さずに動く（ビルド時に GUI アプリとして作成）。
+// その場合、画面に出していたログは exe の隣の superchat-cg.log に書き出し、操作はタスクトレイから行う
+const GUI = IS_EXE && process.platform === 'win32';
+const LOG_PATH = dataPath('superchat-cg.log');
+if (GUI) {
+  try {
+    if (fs.statSync(LOG_PATH).size > 5e6) fs.renameSync(LOG_PATH, `${LOG_PATH}.old`);
+  } catch {
+    // ログファイルがまだない
+  }
+  const out = fs.createWriteStream(LOG_PATH, { flags: 'a' });
+  const write = (...a) => out.write(`${new Date().toLocaleString('ja-JP')} ${require('util').format(...a)}\n`);
+  console.log = write;
+  console.error = write;
+  console.warn = write;
+}
+const { startTray, showMessage } = require('./lib/tray');
+const APP_VERSION = require('./package.json').version;
 
 let settings = config.load();
 let PORT = Number(args.port || process.env.PORT || settings.port) || 3000;
@@ -261,6 +281,7 @@ function snapshot() {
 }
 
 const routes = {
+  'GET /api/ping': () => ({ app: 'superchat-cg', version: APP_VERSION }),
   'GET /api/state': () => snapshot(),
   'GET /api/settings': () => ({ settings: publicSettings(), port: PORT, host: HOST, demo: DEMO }),
   'PUT /api/settings': (body) => updateSettings(body),
@@ -422,18 +443,50 @@ function askPort() {
   });
 }
 
-server.on('error', (e) => {
+// すでにこのアプリが同じポートで起動しているか
+async function isOurApp(port) {
+  try {
+    const res = await fetch(`http://127.0.0.1:${port}/api/ping`, { signal: AbortSignal.timeout(1500) });
+    return (await res.json()).app === 'superchat-cg';
+  } catch {
+    return false;
+  }
+}
+
+const REQUESTED_PORT = PORT;
+server.on('error', async (e) => {
+  let msg;
   if (e.code === 'EADDRINUSE') {
-    console.error(`\nポート ${PORT} は他のアプリが使用中です。`);
+    // 二重起動なら、起動中のほうの操作画面を開いて終了
+    if (PORT === REQUESTED_PORT && (await isOurApp(PORT))) {
+      console.log(`スーパーチャットCG はすでに起動しています：http://localhost:${PORT}/`);
+      if (IS_EXE && !args.noOpen) openBrowser(`http://localhost:${PORT}/`);
+      setTimeout(() => process.exit(0), 500);
+      return;
+    }
     if (process.stdin.isTTY) {
+      console.error(`\nポート ${PORT} は他のアプリが使用中です。`);
       askPort();
       return;
     }
-    console.error(`別のポートを指定して起動してください。例：node server.js --port ${PORT + 1}\n`);
+    // ウィンドウがないので番号は聞かず、空いているポートを自動で探す
+    if (GUI && PORT < REQUESTED_PORT + 20) {
+      console.log(`ポート ${PORT} は使用中のため ${PORT + 1} を試します`);
+      PORT += 1;
+      server.listen(PORT, HOST);
+      return;
+    }
+    msg = `ポート ${PORT} は他のアプリが使用中です。別のポートを指定して起動してください。例：node server.js --port ${PORT + 1}`;
   } else if (e.code === 'EACCES') {
-    console.error(`\nポート ${PORT} を使う権限がありません。1024 以上の番号を指定してください。\n`);
+    msg = `ポート ${PORT} を使う権限がありません。1024 以上の番号を指定してください。`;
   } else {
-    console.error(e);
+    msg = `起動できませんでした：${e.message}`;
+  }
+  console.error(`\n${msg}\n`);
+  if (GUI) {
+    showMessage(msg);
+    setTimeout(() => process.exit(1), 3000);
+    return;
   }
   waitAndExit(1);
 });
@@ -460,8 +513,14 @@ server.on('listening', () => {
       }
     }
   }
-  console.log(IS_EXE ? '  終了するにはこのウィンドウを閉じてください\n' : '  終了するには Ctrl + C\n');
+  console.log(GUI ? '  終了はタスクトレイのアイコンを右クリック →「終了」\n' : IS_EXE ? '  終了するにはこのウィンドウを閉じてください\n' : '  終了するには Ctrl + C\n');
   if ((IS_EXE && !args.noOpen) || args.open) openBrowser(`http://localhost:${PORT}/`);
+  if (GUI && !args.noTray) {
+    const notice = PORT !== REQUESTED_PORT
+      ? `ポート ${REQUESTED_PORT} が使用中のため ${PORT} で起動しました`
+      : 'タスクトレイで動作中です。右クリックでメニューを開きます';
+    startTray({ url: `http://localhost:${PORT}/`, exePath: process.execPath, logPath: LOG_PATH, notice });
+  }
   if (wantRunning) {
     log('前回の取得を再開します');
     watchdog();

@@ -63,5 +63,30 @@ execFileSync(process.execPath, [
 ], { stdio: 'inherit' });
 if (isMac) execFileSync('codesign', ['--sign', '-', exePath], { stdio: 'inherit' });
 
+// 4) Windows：コンソールアプリ → GUI アプリに変更し、起動時にコマンドプロンプトを出さない
+//    （PE ヘッダーの Subsystem を 3=CONSOLE から 2=WINDOWS_GUI に書き換える）
+if (isWin || process.env.FORCE_GUI_SUBSYSTEM) setGuiSubsystem(exePath);
+
+function setGuiSubsystem(file) {
+  const fd = fs.openSync(file, 'r+');
+  try {
+    const buf = Buffer.alloc(4);
+    fs.readSync(fd, buf, 0, 4, 0x3c);
+    const peOffset = buf.readUInt32LE(0);
+    const sig = Buffer.alloc(4);
+    fs.readSync(fd, sig, 0, 4, peOffset);
+    if (sig.toString('binary') !== 'PE\0\0') throw new Error('PE 形式の実行ファイルではありません');
+    const subsystemOffset = peOffset + 4 + 20 + 68; // PE 署名 + COFF ヘッダー + Optional Header 内の位置
+    const cur = Buffer.alloc(2);
+    fs.readSync(fd, cur, 0, 2, subsystemOffset);
+    const w = Buffer.alloc(2);
+    w.writeUInt16LE(2);
+    fs.writeSync(fd, w, 0, 2, subsystemOffset);
+    console.log(`Subsystem: ${cur.readUInt16LE(0)} → 2（GUI）`);
+  } finally {
+    fs.closeSync(fd);
+  }
+}
+
 for (const f of ['app.cjs', 'sea-config.json', 'sea-prep.blob']) fs.rmSync(path.join(DIST, f));
 console.log(`\n作成しました: ${path.relative(ROOT, exePath)} (${(fs.statSync(exePath).size / 1e6).toFixed(1)} MB)`);
