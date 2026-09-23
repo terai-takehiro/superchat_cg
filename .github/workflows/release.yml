@@ -1,9 +1,12 @@
-name: Windows 版リリース
+name: Windows 版ビルド・リリース
 
-# v から始まるタグ（例：v1.0.0）を push すると、Windows 用 exe をビルドしてリリースに添付する
+# - PR：Windows 上で exe をビルドして動作確認（リリースはしない）
+# - main へのマージ：package.json のバージョン（例 1.0.0 → v1.0.0）のリリースがまだなければ作成し、zip を添付
+#   新しいリリースを出すときは package.json の version を上げてマージする
 on:
+  pull_request:
   push:
-    tags: ['v*']
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -28,7 +31,7 @@ jobs:
         run: |
           $p = Start-Process -FilePath dist\superchat-cg.exe -ArgumentList '--demo','--port','3999','--no-open' -PassThru
           Start-Sleep -Seconds 5
-          foreach ($path in '/', '/settings', '/style.css', '/ops.js') {
+          foreach ($path in '/', '/settings', '/style.css', '/ops.js', '/api/settings') {
             $r = Invoke-WebRequest "http://localhost:3999$path" -UseBasicParsing
             if ($r.StatusCode -ne 200) { throw "$path が $($r.StatusCode)" }
           }
@@ -36,19 +39,34 @@ jobs:
           Start-Sleep -Seconds 1
           Remove-Item dist\config.json, dist\state.json, dist\usage.json -ErrorAction SilentlyContinue
 
+      - name: バージョンとリリース済みかを確認
+        id: ver
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $v = node -p "require('./package.json').version"
+          "tag=v$v" >> $env:GITHUB_OUTPUT
+          gh release view "v$v" --repo "${{ github.repository }}" *> $null
+          "exists=$([bool]($LASTEXITCODE -eq 0)).ToLower()" >> $env:GITHUB_OUTPUT
+
       - name: zip にまとめる
         shell: pwsh
         run: |
           Copy-Item docs\README.txt dist\
-          Compress-Archive -Path dist\* -DestinationPath "superchat-cg-windows-${{ github.ref_name }}.zip"
+          Compress-Archive -Path dist\* -DestinationPath "superchat-cg-windows-${{ steps.ver.outputs.tag }}.zip"
 
       - uses: actions/upload-artifact@v4
         with:
           name: superchat-cg-windows
           path: superchat-cg-windows-*.zip
 
-      - uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
+      - name: リリースを作成
+        if: github.event_name != 'pull_request' && steps.ver.outputs.exists != 'true'
+        uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.ver.outputs.tag }}
+          name: スーパーチャットCG ${{ steps.ver.outputs.tag }}
+          target_commitish: ${{ github.sha }}
           files: superchat-cg-windows-*.zip
           body_path: docs/release-notes.md

@@ -15,7 +15,7 @@ YouTube Live のスーパーチャット（必要なら通常コメントも）�
 [Releases](https://github.com/terai-takehiro/superchat_cg/releases) から `superchat-cg-windows-*.zip` をダウンロードし、展開した `superchat-cg.exe` をダブルクリックすると起動します（Node.js 不要）。ブラウザで操作画面が自動で開き、設定は exe と同じフォルダに保存されます。
 
 - exe は `npm run build:exe` で作成できます（実行した OS 用の実行ファイルが `dist/` にできます）。
-- `v1.0.0` のようなタグを push すると、GitHub Actions が Windows 用 exe をビルドしてリリースに添付します。
+- main にマージされると、GitHub Actions が Windows 用 exe をビルドし、`package.json` のバージョン（例：`v1.0.0`）でリリースを作成します。新しいリリースを出すときは `version` を上げてからマージしてください。
 
 ## 起動（Node.js から）
 
