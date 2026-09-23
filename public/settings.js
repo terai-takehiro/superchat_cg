@@ -32,6 +32,8 @@ function fill(s) {
   $('fComment').value = s.singular.fields.comment;
   $('fIcon').value = s.singular.fields.icon;
   $('fColor').value = s.singular.fields.color;
+  $('fDText').value = s.singular.fields.displayComment;
+  $('fDPrice').value = s.singular.fields.displayAmount;
 
   setRadio('sendMode', s.singular.autoSend ? 'auto' : 'manual');
   setRadio('swapMode', s.singular.swapInPlace === false ? 'outin' : 'update');
@@ -99,6 +101,8 @@ function collect() {
         comment: $('fComment').value.trim(),
         icon: $('fIcon').value.trim(),
         color: $('fColor').value.trim(),
+        displayComment: $('fDText').value.trim(),
+        displayAmount: $('fDPrice').value.trim(),
       },
       autoSend: radio('sendMode') === 'auto',
       swapInPlace: radio('swapMode') !== 'outin',
