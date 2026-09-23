@@ -48,7 +48,9 @@ jobs:
           $v = node -p "require('./package.json').version"
           "tag=v$v" >> $env:GITHUB_OUTPUT
           gh release view "v$v" --repo "${{ github.repository }}" *> $null
-          "exists=$([bool]($LASTEXITCODE -eq 0)).ToLower()" >> $env:GITHUB_OUTPUT
+          $exists = if ($LASTEXITCODE -eq 0) { 'true' } else { 'false' }
+          "exists=$exists" >> $env:GITHUB_OUTPUT
+          exit 0
 
       - name: zip にまとめる
         shell: pwsh
