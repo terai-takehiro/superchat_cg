@@ -160,16 +160,17 @@ function renderOnair() {
 function renderStatus() {
   const yt = state.youtube;
   const on = yt.running;
+  const busy = on || yt.reconnecting; // 取得中または自動再接続中は「停止」ボタンを出す
   $('liveBar').classList.toggle('on', on);
-  $('liveState').textContent = on ? '取得中' : '停止中';
+  $('liveState').textContent = on ? '取得中' : yt.reconnecting ? '再接続中' : '停止中';
   $('liveTitle').textContent = yt.title || (state.settings?.youtube.video ? state.settings.youtube.video : '未設定（設定画面で配信URLを入力してください）');
   $('liveQuota').innerHTML = quotaText(yt);
-  $('liveBtn').textContent = on ? '取得を停止する' : '取得を開始する';
-  $('liveBtn').className = `btn ${on ? 'btn-secondary' : 'btn-primary'}`;
+  $('liveBtn').textContent = busy ? '取得を停止する' : '取得を開始する';
+  $('liveBtn').className = `btn ${busy ? 'btn-secondary' : 'btn-primary'}`;
   const st = $('ytStatus');
   st.className = `status ${on ? 'ok' : yt.lastError ? 'err' : 'off'}`;
   st.querySelector('.icon').textContent = on ? '✓' : yt.lastError ? '!' : '–';
-  $('ytLabel').textContent = on ? (yt.lastError ? '再試行中' : '取得中') : yt.lastError ? 'エラー' : '停止中';
+  $('ytLabel').textContent = on ? (yt.lastError ? '再試行中' : '取得中') : yt.reconnecting ? '再接続中' : yt.lastError ? 'エラー' : '停止中';
   $('sendModeLabel').textContent = state.settings ? (state.settings.singular.autoSend ? (state.cg.halted ? '自動（一時停止中）' : '自動') : '手動') : '—';
   $('demoBadge').hidden = !state.demo;
   $('modeSeg').hidden = !fetchAll();
@@ -295,7 +296,7 @@ $('clearQ').onclick = () => {
   if (confirm(`待機キュー ${state.cg.queue.length}件をすべて削除しますか？`)) api('/api/cg/clear').catch((e) => showAlert(e.message));
 };
 $('liveBtn').onclick = async () => {
-  const running = state.youtube.running;
+  const running = state.youtube.running || state.youtube.reconnecting;
   if (running && !confirm('コメントの取得を停止しますか？\n停止中に届いたスパチャは取り込まれません。')) return;
   $('liveBtn').disabled = true;
   try {

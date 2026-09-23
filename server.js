@@ -50,6 +50,24 @@ const logs = [];
 const sources = DEMO ? { demo: new DemoChat() } : { web: new YouTubeWebChat(), api: new YouTubeLiveChat(new QuotaTracker()) };
 const sourceFor = () => (DEMO ? sources.demo : sources[settings.youtube.source] || sources.web);
 let chat = sourceFor();
+
+// 取得を「続けたい」状態を state.json に保存し、アプリ再起動や配信の一時中断から自動で復帰する
+const STATE_PATH = path.join(__dirname, 'state.json');
+let wantRunning = false;
+try {
+  wantRunning = Boolean(JSON.parse(fs.readFileSync(STATE_PATH, 'utf8')).wantRunning);
+} catch {
+  // 初回起動
+}
+function setWantRunning(v) {
+  wantRunning = v;
+  try {
+    fs.writeFileSync(STATE_PATH, JSON.stringify({ wantRunning: v }));
+  } catch {
+    // 保存できなくても動作は続ける
+  }
+}
+const ytStatus = () => ({ ...chat.status(), reconnecting: wantRunning && !chat.status().running });
 const cg = new CgController(() => settings, { dryRun: DEMO });
 
 const clients = new Set();
@@ -72,6 +90,7 @@ function findMessage(id) {
 
 function onChatMessage(msg) {
   if (settings.youtube.mode === 'superchat' && msg.type === 'text') return;
+  if (history.some((m) => m.id === msg.id)) return;
   msg.sent = false;
   history.unshift(msg);
   if (history.length > MAX_HISTORY) history.length = MAX_HISTORY;
@@ -79,7 +98,8 @@ function onChatMessage(msg) {
   if (msg.type !== 'text' && settings.singular.autoSend) cg.enqueue(msg);
 }
 let lastYtError = '';
-function onChatStatus(s) {
+function onChatStatus(raw) {
+  const s = { ...raw, reconnecting: wantRunning && !raw.running };
   broadcast('youtube', s);
   if (s.lastError && s.lastError !== lastYtError) {
     if (!s.running) log(`YouTube の取得が止まりました：${s.lastError}`, 'error');
@@ -146,6 +166,41 @@ function updateSettings(input) {
   return { settings: publicSettings(), restartRequired };
 }
 
+let startedInThisProcess = false;
+async function startChat({ reconnect = false } = {}) {
+  chat.stop();
+  chat = sourceFor();
+  await chat.start({
+    apiKey: settings.youtube.apiKey,
+    video: settings.youtube.video,
+    pacing: settings.youtube.pacing,
+    minIntervalMs: settings.youtube.minIntervalMs,
+    dailyQuota: settings.youtube.dailyQuota,
+    // 再接続時は、切れていた間のコメントを取りこぼさないよう直前の分も取り込む（取り込み済みは除外される）
+    skipBacklog: reconnect ? false : settings.youtube.skipBacklog,
+  });
+  startedInThisProcess = true;
+  log(`YouTube の取得を${reconnect ? '再開' : '開始'}しました（${settings.youtube.source === 'api' && !DEMO ? 'API' : '直接取得'}）：${chat.status().title}`);
+}
+
+// 取得が止まっていたら 30 秒ごとに再接続を試みる（停止ボタンを押すまで続ける）
+let lastRetryError = '';
+async function watchdog() {
+  if (!wantRunning || chat.status().running) {
+    lastRetryError = '';
+    return;
+  }
+  try {
+    await startChat({ reconnect: startedInThisProcess });
+    lastRetryError = '';
+  } catch (e) {
+    if (e.message !== lastRetryError) log(`再接続できませんでした（30秒ごとに再試行します）：${e.message}`, 'error');
+    lastRetryError = e.message;
+    broadcast('youtube', ytStatus());
+  }
+}
+setInterval(watchdog, 30000);
+
 // ---------- HTTP ----------
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon' };
@@ -201,7 +256,7 @@ function snapshot() {
     port: PORT,
     host: HOST,
     settings: publicSettings(),
-    youtube: chat.status(),
+    youtube: ytStatus(),
     cg: cg.state(),
     messages: history,
     logs: logs.slice(0, 50),
@@ -214,23 +269,15 @@ const routes = {
   'PUT /api/settings': (body) => updateSettings(body),
 
   'POST /api/youtube/start': async () => {
-    chat.stop();
-    chat = sourceFor();
-    await chat.start({
-      apiKey: settings.youtube.apiKey,
-      video: settings.youtube.video,
-      pacing: settings.youtube.pacing,
-      minIntervalMs: settings.youtube.minIntervalMs,
-      dailyQuota: settings.youtube.dailyQuota,
-      skipBacklog: settings.youtube.skipBacklog,
-    });
-    log(`YouTube の取得を開始しました（${settings.youtube.source === 'api' && !DEMO ? 'API' : '直接取得'}）：${chat.status().title}`);
-    return chat.status();
+    await startChat();
+    setWantRunning(true);
+    return ytStatus();
   },
   'POST /api/youtube/stop': () => {
+    setWantRunning(false);
     chat.stop();
     log('YouTube の取得を停止しました');
-    return chat.status();
+    return ytStatus();
   },
 
   'POST /api/cg/send': (body) => {
@@ -375,7 +422,14 @@ server.listen(PORT, HOST, () => {
     }
   }
   console.log('  終了するには Ctrl + C\n');
+  if (wantRunning) {
+    log('前回の取得を再開します');
+    watchdog();
+  }
 });
+
+process.on('uncaughtException', (e) => log(`内部エラー（動作は継続します）：${e.stack || e.message}`, 'error'));
+process.on('unhandledRejection', (e) => log(`内部エラー（動作は継続します）：${e?.stack || e}`, 'error'));
 
 function shutdown() {
   chat.stop();
