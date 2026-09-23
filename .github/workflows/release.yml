@@ -1,0 +1,54 @@
+name: Windows 版リリース
+
+# v から始まるタグ（例：v1.0.0）を push すると、Windows 用 exe をビルドしてリリースに添付する
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: npm ci
+
+      - run: npm run build:exe
+
+      - name: 動作確認（exe を起動して画面が返るか）
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath dist\superchat-cg.exe -ArgumentList '--demo','--port','3999','--no-open' -PassThru
+          Start-Sleep -Seconds 5
+          foreach ($path in '/', '/settings', '/style.css', '/ops.js') {
+            $r = Invoke-WebRequest "http://localhost:3999$path" -UseBasicParsing
+            if ($r.StatusCode -ne 200) { throw "$path が $($r.StatusCode)" }
+          }
+          Stop-Process -Id $p.Id -Force
+          Start-Sleep -Seconds 1
+          Remove-Item dist\config.json, dist\state.json, dist\usage.json -ErrorAction SilentlyContinue
+
+      - name: zip にまとめる
+        shell: pwsh
+        run: |
+          Copy-Item docs\README.txt dist\
+          Compress-Archive -Path dist\* -DestinationPath "superchat-cg-windows-${{ github.ref_name }}.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: superchat-cg-windows
+          path: superchat-cg-windows-*.zip
+
+      - uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: superchat-cg-windows-*.zip
+          body_path: docs/release-notes.md

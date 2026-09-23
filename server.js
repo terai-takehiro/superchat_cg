@@ -6,6 +6,7 @@ const path = require('path');
 const os = require('os');
 
 const config = require('./lib/config');
+const { IS_EXE, dataPath, readPublic } = require('./lib/paths');
 const { YouTubeLiveChat } = require('./lib/youtube');
 const { QuotaTracker } = require('./lib/quota');
 const { YouTubeWebChat } = require('./lib/youtube-web');
@@ -22,6 +23,8 @@ function parseArgs(argv) {
     else if (a === '--host') out.host = argv[++i];
     else if (a.startsWith('--host=')) out.host = a.slice(7);
     else if (a === '--demo') out.demo = true;
+    else if (a === '--no-open') out.noOpen = true;
+    else if (a === '--open') out.open = true;
     else if (a === '--help' || a === '-h') out.help = true;
   }
   return out;
@@ -32,12 +35,13 @@ if (args.help) {
   console.log(`使い方: node server.js [--port 3000] [--host 127.0.0.1] [--demo]
   --port, -p  待ち受けポート番号（未指定時は設定画面の値、既定 3000）
   --host      待ち受けアドレス（0.0.0.0 で同じネットワークの他端末からも操作可）
-  --demo      YouTube / Singular に接続せず、ダミーデータで動作確認する`);
+  --demo      YouTube / Singular に接続せず、ダミーデータで動作確認する
+  --open / --no-open  起動時にブラウザで操作画面を開く／開かない（exe 版は既定で開く）`);
   process.exit(0);
 }
 
 let settings = config.load();
-const PORT = Number(args.port || process.env.PORT || settings.port) || 3000;
+let PORT = Number(args.port || process.env.PORT || settings.port) || 3000;
 const HOST = args.host || process.env.HOST || settings.host || '127.0.0.1';
 const DEMO = Boolean(args.demo);
 
@@ -52,7 +56,7 @@ const sourceFor = () => (DEMO ? sources.demo : sources[settings.youtube.source] 
 let chat = sourceFor();
 
 // 取得を「続けたい」状態を state.json に保存し、アプリ再起動や配信の一時中断から自動で復帰する
-const STATE_PATH = path.join(__dirname, 'state.json');
+const STATE_PATH = dataPath('state.json');
 let wantRunning = false;
 try {
   wantRunning = Boolean(JSON.parse(fs.readFileSync(STATE_PATH, 'utf8')).wantRunning);
@@ -202,7 +206,6 @@ async function watchdog() {
 setInterval(watchdog, 30000);
 
 // ---------- HTTP ----------
-const PUBLIC_DIR = path.join(__dirname, 'public');
 const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon' };
 
 function sendJson(res, status, data) {
@@ -234,20 +237,14 @@ function readBody(req) {
 }
 
 function serveStatic(req, res, pathname) {
-  const rel = pathname === '/' ? 'index.html' : pathname === '/settings' ? 'settings.html' : pathname.slice(1);
-  const file = path.normalize(path.join(PUBLIC_DIR, rel));
-  if (!file.startsWith(PUBLIC_DIR + path.sep)) {
-    res.writeHead(403).end();
+  const rel = pathname === '/' ? 'index.html' : pathname === '/settings' ? 'settings.html' : decodeURIComponent(pathname.slice(1));
+  const data = readPublic(rel);
+  if (!data) {
+    res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }).end('Not Found');
     return;
   }
-  fs.readFile(file, (err, data) => {
-    if (err) {
-      res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }).end('Not Found');
-      return;
-    }
-    res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-cache' });
-    res.end(data);
-  });
+  res.writeHead(200, { 'Content-Type': MIME[path.extname(rel)] || 'application/octet-stream', 'Cache-Control': 'no-cache' });
+  res.end(req.method === 'HEAD' ? undefined : data);
 }
 
 function snapshot() {
@@ -399,18 +396,60 @@ const server = http.createServer(async (req, res) => {
   serveStatic(req, res, pathname);
 });
 
+// exe をダブルクリックで起動した場合など、エラーで即座にウィンドウが閉じないよう Enter 待ちにする
+function waitAndExit(code) {
+  if (!process.stdin.isTTY) process.exit(code);
+  console.log('Enter キーを押すと終了します');
+  process.stdin.resume();
+  process.stdin.once('data', () => process.exit(code));
+}
+
+// ポートが使用中なら、その場で別の番号を入力してもらう（入力された番号は設定に保存）
+function askPort() {
+  const rl = require('readline').createInterface({ input: process.stdin, output: process.stdout });
+  rl.question(`使うポート番号を入力して Enter（例：${PORT + 1}）：`, (answer) => {
+    rl.close();
+    const n = Number(answer.trim());
+    if (!Number.isInteger(n) || n < 1024 || n > 65535) {
+      console.log('1024〜65535 の整数で入力してください');
+      askPort();
+      return;
+    }
+    PORT = n;
+    settings.port = n;
+    config.save(settings);
+    server.listen(PORT, HOST);
+  });
+}
+
 server.on('error', (e) => {
   if (e.code === 'EADDRINUSE') {
-    console.error(`\nポート ${PORT} は他のアプリが使用中です。別のポートを指定して起動してください。\n  例：node server.js --port ${PORT + 1}\n`);
+    console.error(`\nポート ${PORT} は他のアプリが使用中です。`);
+    if (process.stdin.isTTY) {
+      askPort();
+      return;
+    }
+    console.error(`別のポートを指定して起動してください。例：node server.js --port ${PORT + 1}\n`);
   } else if (e.code === 'EACCES') {
     console.error(`\nポート ${PORT} を使う権限がありません。1024 以上の番号を指定してください。\n`);
   } else {
     console.error(e);
   }
-  process.exit(1);
+  waitAndExit(1);
 });
 
-server.listen(PORT, HOST, () => {
+function openBrowser(url) {
+  const { spawn } = require('child_process');
+  const [cmd, cmdArgs] = process.platform === 'win32' ? ['rundll32', ['url.dll,FileProtocolHandler', url]]
+    : process.platform === 'darwin' ? ['open', [url]] : ['xdg-open', [url]];
+  try {
+    spawn(cmd, cmdArgs, { detached: true, stdio: 'ignore', windowsHide: true }).on('error', () => {}).unref();
+  } catch {
+    // ブラウザを開けなくても動作は続ける
+  }
+}
+
+server.on('listening', () => {
   console.log('\nスーパーチャットCG を起動しました' + (DEMO ? '（デモモード：YouTube / Singular には接続しません）' : ''));
   console.log(`  操作画面: http://localhost:${PORT}/`);
   console.log(`  設定画面: http://localhost:${PORT}/settings`);
@@ -421,7 +460,8 @@ server.listen(PORT, HOST, () => {
       }
     }
   }
-  console.log('  終了するには Ctrl + C\n');
+  console.log(IS_EXE ? '  終了するにはこのウィンドウを閉じてください\n' : '  終了するには Ctrl + C\n');
+  if ((IS_EXE && !args.noOpen) || args.open) openBrowser(`http://localhost:${PORT}/`);
   if (wantRunning) {
     log('前回の取得を再開します');
     watchdog();
@@ -438,3 +478,5 @@ function shutdown() {
 }
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
+
+server.listen(PORT, HOST);
