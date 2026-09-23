@@ -15,7 +15,7 @@ function fill(s) {
   $('ytKey').value = '';
   $('ytKey').placeholder = s.youtube.hasApiKey ? '設定済み（変更する場合のみ入力）' : '';
   $('ytKey-state').textContent = s.youtube.hasApiKey ? '✓ 設定済み' : '';
-  $('ytVideo').value = s.youtube.video;
+  $('ytVideo').value = s.youtube.videos.join('\n');
   $('catSuperchat').checked = s.youtube.categories.superchat;
   $('catMember').checked = s.youtube.categories.member;
   $('catNormal').checked = s.youtube.categories.normal;
@@ -85,7 +85,7 @@ function collect() {
     host: radio('host'),
     youtube: {
       apiKey: $('ytKey').value.trim(),
-      video: $('ytVideo').value.trim(),
+      videos: $('ytVideo').value.split(/\r?\n/).map((v) => v.trim()).filter(Boolean),
       categories: { superchat: $('catSuperchat').checked, member: $('catMember').checked, normal: $('catNormal').checked },
       source: radio('source'),
       pacing: radio('pacing'),
@@ -134,7 +134,7 @@ function showErrors(errors) {
 function missingWarnings(s) {
   const w = [];
   if (s.youtube.source === 'api' && !s.youtube.hasApiKey) w.push('YouTube の API Key');
-  if (!s.youtube.video) w.push('配信のURL または 動画ID');
+  if (!s.youtube.videos.length) w.push('配信のURL または 動画ID');
   if (!s.singular.hasAppToken) w.push('Control App Token');
   if (!s.singular.subCompositionName) w.push('サブコンポジション名');
   return w;

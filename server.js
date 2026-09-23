@@ -7,9 +7,10 @@ const os = require('os');
 
 const config = require('./lib/config');
 const { IS_EXE, dataPath, readPublic } = require('./lib/paths');
-const { YouTubeLiveChat } = require('./lib/youtube');
+const { YouTubeLiveChat, extractVideoId } = require('./lib/youtube');
 const { QuotaTracker } = require('./lib/quota');
 const { YouTubeWebChat } = require('./lib/youtube-web');
+const { StreamManager } = require('./lib/streams');
 const { DemoChat } = require('./lib/demo');
 const { CgController, testConnection, buildPayload } = require('./lib/singular');
 
@@ -71,9 +72,14 @@ let history = []; // 新しい順
 const logs = [];
 
 // 取得方法：web = YouTube から直接（上限なし） / api = YouTube Data API（1日の上限あり）
-const sources = DEMO ? { demo: new DemoChat() } : { web: new YouTubeWebChat(), api: new YouTubeLiveChat(new QuotaTracker()) };
-const sourceFor = () => (DEMO ? sources.demo : sources[settings.youtube.source] || sources.web);
-let chat = sourceFor();
+// 配信（URL）ごとに 1 つずつ作り、StreamManager でまとめて扱う
+const quota = new QuotaTracker();
+const createChat = () => {
+  if (DEMO) return new DemoChat();
+  return settings.youtube.source === 'api' ? new YouTubeLiveChat(quota) : new YouTubeWebChat();
+};
+const streams = new StreamManager(createChat);
+streams.rebuild(settings.youtube.videos);
 
 // 取得を「続けたい」状態を state.json に保存し、アプリ再起動や配信の一時中断から自動で復帰する
 const STATE_PATH = dataPath('state.json');
@@ -91,7 +97,10 @@ function setWantRunning(v) {
     // 保存できなくても動作は続ける
   }
 }
-const ytStatus = () => ({ ...chat.status(), reconnecting: wantRunning && !chat.status().running });
+const ytStatus = () => {
+  const s = streams.status();
+  return { ...s, reconnecting: wantRunning && !s.allRunning };
+};
 const cg = new CgController(() => settings, { dryRun: DEMO });
 
 const clients = new Set();
@@ -121,21 +130,23 @@ function onChatMessage(msg) {
   broadcast('message', msg);
   if (msg.type !== 'text' && settings.singular.autoSend) cg.enqueue(msg);
 }
-let lastYtError = '';
-function onChatStatus(raw) {
-  const s = { ...raw, reconnecting: wantRunning && !raw.running };
+// 配信ごとにエラー文言が変わったときだけログに残す
+const lastYtErrors = new Map();
+function onChatStatus() {
+  const s = ytStatus();
   broadcast('youtube', s);
-  if (s.lastError && s.lastError !== lastYtError) {
-    if (!s.running) log(`YouTube の取得が止まりました：${s.lastError}`, 'error');
-    else log(`YouTube：${s.lastError}`, 'error');
+  const multi = s.streams.length > 1;
+  for (const st of s.streams) {
+    const prev = lastYtErrors.get(st.index) || '';
+    if (st.lastError && st.lastError !== prev) {
+      const who = multi ? `配信${st.index}（${st.title}）` : 'YouTube';
+      log(st.running ? `${who}：${st.lastError}` : `${who} の取得が止まりました：${st.lastError}`, 'error');
+    }
+    lastYtErrors.set(st.index, st.lastError);
   }
-  lastYtError = s.lastError;
 }
-for (const src of Object.values(sources)) {
-  // 使っていない取得方法からのイベントは無視する
-  src.on('message', (m) => src === chat && onChatMessage(m));
-  src.on('status', (st) => src === chat && onChatStatus(st));
-}
+streams.on('message', onChatMessage);
+streams.on('status', onChatStatus);
 
 cg.on('state', (s) => broadcast('cg', s));
 cg.on('log', (t) => log(t));
@@ -160,6 +171,9 @@ function publicSettings() {
 function validate(s) {
   const errors = [];
   if (!Number.isInteger(s.port) || s.port < 1024 || s.port > 65535) errors.push({ field: 'port', message: 'ポート番号は 1024〜65535 の整数で入力してください' });
+  if (s.youtube.videos.length > 10) errors.push({ field: 'ytVideo', message: '配信の URL は 10 件までにしてください' });
+  const badVideo = s.youtube.videos.find((v) => !extractVideoId(v));
+  if (badVideo) errors.push({ field: 'ytVideo', message: `配信の URL または動画 ID が正しくありません：${badVideo}` });
   if (!Object.values(s.youtube.categories).some(Boolean)) errors.push({ field: 'catSuperchat', message: '取得するコメントを 1 つ以上選んでください' });
   if (!['web', 'api'].includes(s.youtube.source)) errors.push({ field: 'source', message: '取得方法を選んでください' });
   if (!['auto', 'fixed'].includes(s.youtube.pacing)) errors.push({ field: 'pacing', message: '取得間隔の決め方を選んでください' });
@@ -182,46 +196,73 @@ function updateSettings(input) {
   if (errors.length) return { errors };
   const autoTurnedOn = !settings.singular.autoSend && next.singular.autoSend;
   const restartRequired = next.port !== settings.port || next.host !== settings.host;
+  const streamsChanged = next.youtube.source !== settings.youtube.source || next.youtube.videos.join('\n') !== settings.youtube.videos.join('\n');
   settings = next;
   config.save(settings);
-  for (const src of Object.values(sources)) src.updateOptions(settings.youtube);
+  if (streamsChanged) {
+    // 配信の URL・取得方法が変わったら作り直す（取得中なら新しい一覧で取得し直す）
+    if (wantRunning && settings.youtube.videos.length) {
+      startChat().catch(() => broadcast('youtube', ytStatus()));
+    } else {
+      streams.rebuild(settings.youtube.videos);
+      broadcast('youtube', ytStatus());
+    }
+  } else {
+    streams.updateOptions(settings.youtube);
+  }
   if (autoTurnedOn) cg.kick();
   broadcast('settings', publicSettings());
   return { settings: publicSettings(), restartRequired };
 }
 
-let startedInThisProcess = false;
-async function startChat({ reconnect = false } = {}) {
-  chat.stop();
-  chat = sourceFor();
-  await chat.start({
-    apiKey: settings.youtube.apiKey,
-    video: settings.youtube.video,
-    pacing: settings.youtube.pacing,
-    minIntervalMs: settings.youtube.minIntervalMs,
-    dailyQuota: settings.youtube.dailyQuota,
-    // 再接続時は、切れていた間のコメントを取りこぼさないよう直前の分も取り込む（取り込み済みは除外される）
-    skipBacklog: reconnect ? false : settings.youtube.skipBacklog,
-  });
-  startedInThisProcess = true;
-  log(`YouTube の取得を${reconnect ? '再開' : '開始'}しました（${settings.youtube.source === 'api' && !DEMO ? 'API' : '直接取得'}）：${chat.status().title}`);
+const chatOptions = () => ({
+  apiKey: settings.youtube.apiKey,
+  pacing: settings.youtube.pacing,
+  minIntervalMs: settings.youtube.minIntervalMs,
+  dailyQuota: settings.youtube.dailyQuota,
+  skipBacklog: settings.youtube.skipBacklog,
+});
+const sourceLabel = () => (settings.youtube.source === 'api' && !DEMO ? 'API' : '直接取得');
+
+// 設定の URL 一覧で作り直して、すべての配信の取得を始める（1 つでも始められれば成功）
+async function startChat() {
+  if (!settings.youtube.videos.length) throw new Error('配信の URL が未設定です（設定画面で入力してください）');
+  streams.rebuild(settings.youtube.videos);
+  const results = await streams.startAll(chatOptions());
+  const multi = results.length > 1;
+  for (const r of results) {
+    const who = multi ? `配信${r.index}` : '';
+    if (r.error) log(`${who ? `${who}：` : ''}取得を開始できませんでした（30秒ごとに再試行します）：${r.error.message}`, 'error');
+    else log(`YouTube の取得を開始しました（${sourceLabel()}）：${who ? `${who} ` : ''}${r.title}`);
+  }
+  if (results.every((r) => r.error)) throw results[0].error;
 }
 
-// 取得が止まっていたら 30 秒ごとに再接続を試みる（停止ボタンを押すまで続ける）
-let lastRetryError = '';
+// 止まっている配信があれば 30 秒ごとに再接続を試みる（停止ボタンを押すまで続ける）
+const lastRetryErrors = new Map();
 async function watchdog() {
-  if (!wantRunning || chat.status().running) {
-    lastRetryError = '';
+  if (!wantRunning) return;
+  // アプリ起動直後など、まだ一度も作っていなければ作り直して開始
+  if (!streams.list.some((e) => e.started)) {
+    try {
+      await startChat();
+    } catch {
+      broadcast('youtube', ytStatus());
+    }
     return;
   }
-  try {
-    await startChat({ reconnect: startedInThisProcess });
-    lastRetryError = '';
-  } catch (e) {
-    if (e.message !== lastRetryError) log(`再接続できませんでした（30秒ごとに再試行します）：${e.message}`, 'error');
-    lastRetryError = e.message;
-    broadcast('youtube', ytStatus());
+  for (const entry of streams.stopped()) {
+    const err = await streams.startOne(entry, chatOptions(), { reconnect: true });
+    const who = streams.list.length > 1 ? `配信${entry.index}` : 'YouTube';
+    if (!err) {
+      log(`${who} の取得を再開しました：${entry.chat.status().title}`);
+      lastRetryErrors.delete(entry.index);
+    } else if (err.message !== lastRetryErrors.get(entry.index)) {
+      log(`${who} に再接続できませんでした（30秒ごとに再試行します）：${err.message}`, 'error');
+      lastRetryErrors.set(entry.index, err.message);
+    }
   }
+  broadcast('youtube', ytStatus());
 }
 setInterval(watchdog, 30000);
 
@@ -293,7 +334,7 @@ const routes = {
   },
   'POST /api/youtube/stop': () => {
     setWantRunning(false);
-    chat.stop();
+    streams.stopAll();
     log('YouTube の取得を停止しました');
     return ytStatus();
   },
@@ -531,7 +572,7 @@ process.on('uncaughtException', (e) => log(`内部エラー（動作は継続し
 process.on('unhandledRejection', (e) => log(`内部エラー（動作は継続します）：${e?.stack || e}`, 'error'));
 
 function shutdown() {
-  chat.stop();
+  streams.stopAll();
   server.close();
   process.exit(0);
 }
