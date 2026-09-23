@@ -26,18 +26,37 @@ jobs:
 
       - run: npm run build:exe
 
+      - name: 確認（タスクトレイ用 PowerShell スクリプトの文法）
+        shell: pwsh
+        run: |
+          node -e "process.stdout.write(require('./lib/tray').trayScript({ url: 'http://localhost:3000/', exePath: 'C:\\x\\superchat-cg.exe', logPath: 'C:\\x\\superchat-cg.log', notice: 'テスト' }))" > tray-test.ps1
+          $errors = $null
+          [void][System.Management.Automation.Language.Parser]::ParseFile("$PWD\tray-test.ps1", [ref]$null, [ref]$errors)
+          if ($errors.Count) { $errors | ForEach-Object { Write-Host $_ }; throw 'トレイスクリプトに文法エラーがあります' }
+          Write-Host 'OK'
+
+      - name: 確認（コマンドプロンプトを出さない GUI アプリになっているか）
+        shell: pwsh
+        run: |
+          $b = [System.IO.File]::ReadAllBytes("dist\superchat-cg.exe")
+          $pe = [BitConverter]::ToInt32($b, 0x3c)
+          $sub = [BitConverter]::ToUInt16($b, $pe + 4 + 20 + 68)
+          Write-Host "Subsystem = $sub"
+          if ($sub -ne 2) { throw "Subsystem が GUI(2) ではありません: $sub" }
+
       - name: 動作確認（exe を起動して画面が返るか）
         shell: pwsh
         run: |
-          $p = Start-Process -FilePath dist\superchat-cg.exe -ArgumentList '--demo','--port','3999','--no-open' -PassThru
+          $p = Start-Process -FilePath dist\superchat-cg.exe -ArgumentList '--demo','--port','3999','--no-open','--no-tray' -PassThru
           Start-Sleep -Seconds 5
-          foreach ($path in '/', '/settings', '/style.css', '/ops.js', '/api/settings') {
+          foreach ($path in '/', '/settings', '/style.css', '/ops.js', '/api/settings', '/api/ping') {
             $r = Invoke-WebRequest "http://localhost:3999$path" -UseBasicParsing
             if ($r.StatusCode -ne 200) { throw "$path が $($r.StatusCode)" }
           }
           Stop-Process -Id $p.Id -Force
           Start-Sleep -Seconds 1
-          Remove-Item dist\config.json, dist\state.json, dist\usage.json -ErrorAction SilentlyContinue
+          Get-Content dist\superchat-cg.log
+          Remove-Item dist\config.json, dist\state.json, dist\usage.json, dist\superchat-cg.log -ErrorAction SilentlyContinue
 
       - name: バージョンとリリース済みかを確認
         id: ver
