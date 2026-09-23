@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>操作 | スーパーチャットCG</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&family=Noto+Sans+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="header">
+  <h1>スーパーチャットCG</h1>
+  <span class="mock" id="demoBadge" hidden>デモモード</span>
+  <nav class="nav" aria-label="画面">
+    <a href="/" aria-current="page">操作</a>
+    <a href="/settings">設定</a>
+  </nav>
+  <ul class="status-list" aria-label="接続状態">
+    <li class="status off" id="ytStatus"><span class="icon" aria-hidden="true">–</span>YouTube：<b id="ytLabel">停止中</b></li>
+    <li class="status off" id="sendStatus"><span class="icon" aria-hidden="true">i</span>送出方法：<b id="sendModeLabel">—</b></li>
+  </ul>
+</header>
+
+<main>
+  <div class="alert-area" id="alerts" aria-live="assertive"></div>
+
+  <section class="live-bar" id="liveBar" aria-label="コメント取得">
+    <div class="live-state">
+      <span class="live-dot" aria-hidden="true"></span>
+      <b id="liveState">停止中</b>
+    </div>
+    <div class="live-title">
+      <span class="count">配信</span>
+      <span id="liveTitle">—</span>
+    </div>
+    <div class="live-quota" id="liveQuota" aria-live="polite"></div>
+    <button class="btn btn-primary" id="liveBtn">取得を開始する</button>
+  </section>
+
+  <div class="ops">
+    <section class="card feed-card" aria-labelledby="feed-h">
+      <div class="card-head">
+        <h2 id="feed-h">コメント</h2>
+        <span class="count" id="count">0件</span>
+        <div class="filters">
+          <div class="seg" role="radiogroup" aria-label="表示するコメント" id="modeSeg">
+            <label><input type="radio" name="mode" value="superchat" checked>スパチャのみ</label>
+            <label><input type="radio" name="mode" value="all">全コメント</label>
+          </div>
+          <label class="check"><input type="checkbox" id="hideSent">送出済みを隠す</label>
+          <label class="check"><input type="checkbox" id="pause">一覧を止める</label>
+        </div>
+      </div>
+      <div class="feed-scroll">
+        <p class="count" style="margin:0 4px 8px">コメントをタップして選択 → 右の「送出する」で確定します</p>
+        <ul class="msg-list" id="feed"></ul>
+      </div>
+    </section>
+
+    <div class="side">
+      <section class="card onair-card" id="onair" aria-labelledby="onair-h">
+        <div class="card-head">
+          <h2 id="onair-h">送出中</h2>
+          <span class="onair-lamp" id="lamp">待機中</span>
+        </div>
+        <div class="card-body">
+          <div class="onair-top">
+            <div class="preview" aria-hidden="true">
+              <span class="preview-note">イメージ</span>
+              <div class="lt" id="lt"><div class="top"><span id="ltName"></span><span id="ltAmount"></span></div><div class="body" id="ltComment"></div></div>
+            </div>
+            <div class="onair-info" aria-live="polite">
+              <div class="now" id="onairName">なし</div>
+              <div class="remain"><span id="remainText">残り —</span><div class="bar" aria-hidden="true"><div id="bar"></div></div></div>
+            </div>
+          </div>
+          <button class="btn btn-danger btn-xl" id="outBtn">OUT（CGを下げる）<kbd>Esc</kbd></button>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="pick-h">
+        <div class="card-head"><h2 id="pick-h">選択中のコメント</h2>
+          <button class="btn btn-tertiary" id="unpick" style="margin-left:auto;min-height:48px" hidden>選択を解除</button>
+        </div>
+        <div class="card-body">
+          <div class="picked" id="picked" aria-live="polite"><span class="none">左の一覧からコメントを選んでください</span></div>
+          <div class="btn-stack">
+            <button class="btn btn-primary btn-xl" id="sendBtn" disabled>送出する <span class="sub" id="sendSub"></span></button>
+            <button class="btn btn-secondary" id="queueBtn" disabled>キューの最後に追加</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="queue-h">
+        <div class="card-head">
+          <h2 id="queue-h">待機キュー</h2>
+          <span class="count" id="qcount">0件</span>
+          <button class="btn btn-tertiary" id="clearQ" style="margin-left:auto;min-height:48px">すべて削除</button>
+        </div>
+        <ol class="queue" id="queue"></ol>
+        <div class="card-body" style="border-top:1px solid var(--gray-200)">
+          <button class="btn btn-secondary" id="nextBtn" style="width:100%">キューの先頭を送出 <kbd>N</kbd></button>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="log-h">
+        <div class="card-head"><h2 id="log-h">ログ</h2></div>
+        <ul class="log" id="log" aria-live="polite"></ul>
+      </section>
+    </div>
+  </div>
+</main>
+
+<div class="conn-lost" id="connLost" role="alert" hidden>サーバーとの接続が切れました。再接続しています…</div>
+
+<script src="ops.js"></script>
+</body>
+</html>

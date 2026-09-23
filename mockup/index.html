@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>操作 | スーパーチャットCG（モックアップ）</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&family=Noto+Sans+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="header">
+  <h1>スーパーチャットCG</h1>
+  <span class="mock">モックアップ（ダミーデータ）</span>
+  <nav class="nav" aria-label="画面">
+    <a href="index.html" aria-current="page">操作</a>
+    <a href="settings.html">設定</a>
+  </nav>
+  <ul class="status-list" aria-label="接続状態">
+    <li class="status ok" id="ytStatus"><span class="icon" aria-hidden="true">✓</span>YouTube：<b id="ytLabel">取得中</b></li>
+    <li class="status ok"><span class="icon" aria-hidden="true">✓</span>Singular：<b>接続OK</b></li>
+    <li class="status off"><span class="icon" aria-hidden="true">i</span>送出方法：<b id="sendModeLabel">自動</b></li>
+  </ul>
+</header>
+
+<main>
+  <section class="live-bar" id="liveBar" aria-label="コメント取得">
+    <div class="live-state">
+      <span class="live-dot" aria-hidden="true"></span>
+      <b id="liveState">取得中</b>
+    </div>
+    <div class="live-title">
+      <span class="count">配信</span>
+      <span id="liveTitle">【LIVE】週末雑談配信</span>
+    </div>
+    <button class="btn btn-secondary" id="liveBtn">取得を停止する</button>
+  </section>
+
+  <div class="ops">
+    <!-- コメント一覧 -->
+    <section class="card feed-card" aria-labelledby="feed-h">
+      <div class="card-head">
+        <h2 id="feed-h">コメント</h2>
+        <span class="count" id="count">0件</span>
+        <div class="filters">
+          <div class="seg" role="radiogroup" aria-label="表示するコメント">
+            <label><input type="radio" name="mode" value="superchat" checked>スパチャのみ</label>
+            <label><input type="radio" name="mode" value="all">全コメント</label>
+          </div>
+          <label class="check"><input type="checkbox" id="hideSent">送出済みを隠す</label>
+          <label class="check"><input type="checkbox" id="pause">一覧を止める</label>
+        </div>
+      </div>
+      <div class="feed-scroll">
+        <p class="count" style="margin:0 4px 8px">コメントをタップして選択 → 右の「送出する」で確定します</p>
+        <ul class="msg-list" id="feed"></ul>
+      </div>
+    </section>
+
+    <div class="side">
+      <!-- 送出中 -->
+      <section class="card onair-card" id="onair" aria-labelledby="onair-h">
+        <div class="card-head">
+          <h2 id="onair-h">送出中</h2>
+          <span class="onair-lamp" id="lamp">待機中</span>
+        </div>
+        <div class="card-body">
+          <div class="onair-top">
+            <div class="preview" aria-hidden="true">
+              <span class="preview-note">イメージ</span>
+              <div class="lt" id="lt"><div class="top"><span id="ltName"></span><span id="ltAmount"></span></div><div class="body" id="ltComment"></div></div>
+            </div>
+            <div class="onair-info" aria-live="polite">
+              <div class="now" id="onairName">なし</div>
+              <div class="remain"><span id="remainText">残り —</span><div class="bar" aria-hidden="true"><div id="bar"></div></div></div>
+            </div>
+          </div>
+          <button class="btn btn-danger btn-xl" id="outBtn" disabled>OUT（CGを下げる）<kbd>Esc</kbd></button>
+        </div>
+      </section>
+
+      <!-- 選択中 -->
+      <section class="card" aria-labelledby="pick-h">
+        <div class="card-head"><h2 id="pick-h">選択中のコメント</h2>
+          <button class="btn btn-tertiary" id="unpick" style="margin-left:auto;min-height:48px" hidden>選択を解除</button>
+        </div>
+        <div class="card-body">
+          <div class="picked" id="picked" aria-live="polite"><span class="none">左の一覧からコメントを選んでください</span></div>
+          <div class="btn-stack">
+            <button class="btn btn-primary btn-xl" id="sendBtn" disabled>送出する <span class="sub" id="sendSub"></span></button>
+            <button class="btn btn-secondary" id="queueBtn" disabled>キューの最後に追加</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- キュー -->
+      <section class="card" aria-labelledby="queue-h">
+        <div class="card-head">
+          <h2 id="queue-h">待機キュー</h2>
+          <span class="count" id="qcount">0件</span>
+          <button class="btn btn-tertiary" id="clearQ" style="margin-left:auto;min-height:48px">すべて削除</button>
+        </div>
+        <ol class="queue" id="queue"></ol>
+        <div class="card-body" style="border-top:1px solid var(--gray-200)">
+          <button class="btn btn-secondary" id="nextBtn" style="width:100%">キューの先頭を送出 <kbd>N</kbd></button>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="log-h">
+        <div class="card-head"><h2 id="log-h">ログ</h2></div>
+        <ul class="log" id="log" aria-live="polite"></ul>
+      </section>
+    </div>
+  </div>
+</main>
+
+<script>
+// ============ 設定（モックアップでは localStorage で設定画面と共有） ============
+let conf = { fetchMode: 'superchat', sendMode: 'auto', dispSec: 8, gapSec: 1 };
+try { Object.assign(conf, JSON.parse(localStorage.getItem('mockSettings') || '{}')); } catch {}
+
+// ============ ダミーデータ ============
+const NAMES = ['たなか', 'Sakura Ch.', 'ぽん太', 'ゆうき', 'Mika', 'やまだ太郎', 'Neko_neko', 'けんと', 'Aoi', 'しろくま'];
+const TEXTS = ['こんばんは！', '今日も楽しみにしてました', 'いつも応援してます！！', '初見です', 'その話もっと聞きたい', 'おつかれさまです', 'ナイス！', '声かわいい', 'BGMいいですね'];
+const SC_TEXTS = ['いつも元気もらってます！少しですが応援です', '誕生日おめでとう！', 'グッズ代にしてください', '', '昨日の配信最高でした', '受験合格しました！報告です'];
+const AMOUNTS = [100, 200, 500, 1000, 2000, 5000, 10000, 50000];
+// YouTube スーパーチャットの金額帯カラー（日本円基準）
+// header = 名前・金額部分の色（バッジに使用） / body = コメント部分の色 / text = 文字色
+const TIERS = [
+  { min: 10000, header: '#d00000', body: '#e62117', text: '#ffffff' }, // 赤
+  { min: 5000,  header: '#c2185b', body: '#e91e63', text: '#ffffff' }, // マゼンタ
+  { min: 2000,  header: '#e65100', body: '#f57c00', text: '#ffffff' }, // オレンジ
+  { min: 1000,  header: '#ffb300', body: '#ffca28', text: '#000000' }, // 黄
+  { min: 500,   header: '#00bfa5', body: '#1de9b6', text: '#000000' }, // 緑
+  { min: 200,   header: '#00b8d4', body: '#00e5ff', text: '#000000' }, // 水色
+  { min: 0,     header: '#1565c0', body: '#1e88e5', text: '#ffffff' }, // 青
+];
+const tier = yen => TIERS.find(t => yen >= t.min);
+const pick = a => a[Math.floor(Math.random() * a.length)];
+let seq = 0;
+function dummy(forceSc) {
+  const sc = forceSc || Math.random() < 0.25;
+  const yen = pick(AMOUNTS);
+  const t = sc ? tier(yen) : null;
+  return { id: 'm' + (++seq), name: pick(NAMES), time: new Date(), type: sc ? 'superchat' : 'text',
+    amount: sc ? '¥' + yen.toLocaleString() : '', tier: t?.header, tierFg: t?.text,
+    comment: sc ? pick(SC_TEXTS) : pick(TEXTS), member: Math.random() < 0.2, sent: false, fresh: true };
+}
+
+// ============ 状態 ============
+const state = { running: true, mode: conf.fetchMode, msgs: [], queue: [], current: null, selected: null, outAt: 0, dur: 0 };
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const hms = d => d.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+const log = t => $('log').insertAdjacentHTML('afterbegin', `<li><span class="mono">${hms(new Date())}</span> ${esc(t)}</li>`);
+const visible = m => (state.mode === 'all' || m.type !== 'text') && !($('hideSent').checked && m.sent);
+const inQueue = m => state.queue.some(q => q.id === m.id);
+const tierStyle = m => `--tier:${m.tier || 'var(--gray-200)'};--tier-fg:${m.tierFg || '#fff'}`;
+
+// ============ 描画 ============
+function renderFeed() {
+  const list = state.msgs.filter(visible);
+  $('count').textContent = `${list.length}件`;
+  $('feed').innerHTML = list.map(m => {
+    const sel = state.selected?.id === m.id;
+    return `<li><button class="msg ${m.type !== 'text' ? 'sc' : ''} ${m.sent ? 'is-sent' : ''} ${m.fresh ? 'new' : ''}" data-pick="${m.id}" aria-pressed="${sel}" style="${tierStyle(m)}">
+      <span class="avatar" aria-hidden="true" style="background:hsl(${m.name.length * 47 % 360} 40% 38%)">${esc(m.name[0])}</span>
+      <span>
+        <span class="meta">
+          ${sel ? '<span class="selected-mark">選択中</span>' : ''}
+          <span class="name">${esc(m.name)}</span>
+          ${m.amount ? `<span class="amount"><span class="visually-hidden">スーパーチャット </span>${esc(m.amount)}</span>` : ''}
+          ${m.member ? '<span class="label member">メンバー</span>' : ''}
+          ${m.sent ? '<span class="label done">送出済み</span>' : ''}
+          ${inQueue(m) ? '<span class="label queued">キュー待ち</span>' : ''}
+          <time class="time">${hms(m.time)}</time>
+        </span>
+        <span class="comment ${m.comment ? '' : 'none'}" style="display:block">${m.comment ? esc(m.comment) : '（コメントなし）'}</span>
+      </span>
+    </button></li>`;
+  }).join('') || '<li class="empty">表示するコメントはまだありません</li>';
+  state.msgs.forEach(m => m.fresh = false);
+}
+function renderPicked() {
+  const m = state.selected;
+  const box = $('picked');
+  box.classList.toggle('has', !!m);
+  box.innerHTML = m
+    ? `<span class="meta"><b>${esc(m.name)}</b>${m.amount ? `<span class="amount" style="${tierStyle(m)}">${esc(m.amount)}</span>` : ''}</span><span class="c">${esc(m.comment || '（コメントなし）')}</span>`
+    : '<span class="none">左の一覧からコメントを選んでください</span>';
+  $('sendBtn').disabled = !m || locked();
+  $('queueBtn').disabled = !m || inQueue(m);
+  $('unpick').hidden = !m;
+  $('sendSub').textContent = m && state.current ? '（表示中と入れ替え）' : '';
+}
+function renderQueue() {
+  $('qcount').textContent = `${state.queue.length}件`;
+  $('clearQ').disabled = !state.queue.length;
+  $('nextBtn').disabled = !state.queue.length || locked();
+  $('queue').innerHTML = state.queue.map((m, i) => `
+    <li class="qitem" style="${tierStyle(m)}">
+      <span class="n">${i + 1}</span>
+      <span class="t"><b>${esc(m.name)}</b> ${m.amount ? `<span class="amount">${esc(m.amount)}</span>` : ''}　${esc(m.comment)}</span>
+      <button class="icon-btn" data-up="${m.id}" ${i === 0 ? 'disabled' : ''} aria-label="${esc(m.name)}を先頭へ移動">↑</button>
+      <button class="icon-btn" data-del="${m.id}" aria-label="${esc(m.name)}をキューから削除">✕</button>
+    </li>`).join('') || '<li class="empty">キューは空です</li>';
+}
+function renderOnair() {
+  const m = state.current;
+  $('onair').classList.toggle('live', !!m);
+  $('lamp').textContent = m ? 'ON AIR' : '待機中';
+  $('onairName').textContent = m ? `${m.name}　${m.amount}` : 'なし';
+  $('outBtn').disabled = !m || locked();
+  $('lt').classList.toggle('in', !!m);
+  if (m) {
+    $('lt').style.setProperty('--tier', m.tier || 'var(--blue-900)');
+    $('lt').style.setProperty('--tier-fg', m.tierFg || '#fff');
+    $('ltName').textContent = m.name; $('ltAmount').textContent = m.amount; $('ltComment').textContent = m.comment;
+  }
+}
+function render() { if (!$('pause').checked) renderFeed(); renderPicked(); renderQueue(); renderOnair(); }
+
+// ============ 送出（本実装ではサーバー側が担当） ============
+let outTimer, nextTimer;
+const gapMs = () => (Number(conf.gapSec) || 0) * 1000;
+function show(m) {
+  state.current = m; m.sent = true;
+  const sec = Number(conf.dispSec) || 0;
+  state.dur = sec * 1000; state.outAt = sec > 0 ? Date.now() + state.dur : 0;
+  clearTimeout(outTimer); if (sec > 0) outTimer = setTimeout(out, state.dur);
+  log(`送出：${m.name} ${m.amount}`); render();
+}
+function out() {
+  clearTimeout(outTimer);
+  if (!state.current) return;
+  log(`OUT：${state.current.name}`);
+  state.current = null; state.outAt = 0; render();
+  clearTimeout(nextTimer);
+  if (conf.sendMode === 'auto') nextTimer = setTimeout(next, gapMs());
+}
+function next() { if (!state.current && state.queue.length) show(state.queue.shift()); }
+function enqueue(m, front) {
+  state.queue = state.queue.filter(x => x.id !== m.id);
+  front ? state.queue.unshift(m) : state.queue.push(m);
+  render(); if (conf.sendMode === 'auto') next();
+}
+function sendNow(m) {
+  state.queue = state.queue.filter(x => x.id !== m.id);
+  if (state.current) { state.queue.unshift(m); out(); clearTimeout(nextTimer); nextTimer = setTimeout(next, gapMs()); }
+  else show(m);
+  render();
+}
+// 連打・二重タップ防止
+let lockUntil = 0;
+const locked = () => Date.now() < lockUntil;
+function guard() { lockUntil = Date.now() + 800; render(); setTimeout(render, 820); }
+
+function receive(m) {
+  state.msgs.unshift(m); state.msgs = state.msgs.slice(0, 300);
+  if (conf.sendMode === 'auto' && m.type !== 'text') enqueue(m); else render();
+}
+setInterval(() => { if (state.running) receive(dummy()); }, 1800);
+for (let i = 0; i < 4; i++) state.msgs.push({ ...dummy(i % 2 === 0), fresh: false });
+
+(function tick() {
+  if (state.current && state.outAt) {
+    const left = Math.max(0, state.outAt - Date.now());
+    $('bar').style.width = (left / state.dur * 100) + '%';
+    $('remainText').textContent = `残り ${Math.ceil(left / 1000)} 秒`;
+  } else {
+    $('bar').style.width = state.current ? '100%' : '0';
+    $('remainText').textContent = state.current ? '「OUT」を押すまで表示' : '残り —';
+  }
+  requestAnimationFrame(tick);
+})();
+
+// ============ 操作 ============
+const find = id => state.msgs.find(m => m.id === id) || state.queue.find(m => m.id === id);
+document.addEventListener('click', e => {
+  const t = e.target.closest('button'); if (!t) return;
+  if (t.dataset.pick) { const m = find(t.dataset.pick); state.selected = state.selected?.id === m.id ? null : m; render(); }
+  if (t.dataset.del) { state.queue = state.queue.filter(m => m.id !== t.dataset.del); render(); }
+  if (t.dataset.up) enqueue(find(t.dataset.up), true);
+});
+$('sendBtn').onclick = e => { if (!state.selected) return; sendNow(state.selected); state.selected = null; guard(); render(); };
+$('queueBtn').onclick = () => { if (!state.selected) return; enqueue(state.selected); log(`キューに追加：${state.selected.name}`); state.selected = null; render(); };
+$('unpick').onclick = () => { state.selected = null; render(); };
+$('outBtn').onclick = e => { out(); guard(); };
+$('nextBtn').onclick = e => { if (!state.queue.length) return; state.current ? sendNow(state.queue[0]) : next(); guard(); };
+$('clearQ').onclick = () => { if (confirm(`待機キュー ${state.queue.length}件をすべて削除しますか？`)) { state.queue = []; render(); } };
+document.querySelectorAll('input[name=mode]').forEach(r => { r.checked = r.value === state.mode; r.onchange = () => { state.mode = r.value; renderFeed(); }; });
+$('hideSent').onchange = renderFeed;
+$('pause').onchange = renderFeed;
+$('sendModeLabel').textContent = conf.sendMode === 'auto' ? '自動' : '手動';
+
+// キーボードショートカット（入力中は無効）
+document.addEventListener('keydown', e => {
+  if (e.target.closest('input, select, textarea')) return;
+  if (e.key === 'Escape') { out(); e.preventDefault(); }
+  if (e.key === 'n' || e.key === 'N') $('nextBtn').click();
+});
+
+// コメント取得の開始・停止（停止は誤タップ防止のため確認あり）
+function renderLive() {
+  const on = state.running;
+  $('liveBar').classList.toggle('on', on);
+  $('liveState').textContent = on ? '取得中' : '停止中';
+  $('liveBtn').textContent = on ? '取得を停止する' : '取得を開始する';
+  $('liveBtn').className = 'btn ' + (on ? 'btn-secondary' : 'btn-primary');
+  const st = $('ytStatus'); st.className = 'status ' + (on ? 'ok' : 'off');
+  st.querySelector('.icon').textContent = on ? '✓' : '–';
+  $('ytLabel').textContent = on ? '取得中' : '停止中';
+}
+$('liveBtn').onclick = () => {
+  if (state.running && !confirm('コメントの取得を停止しますか？\n停止中に届いたスパチャは取り込まれません。')) return;
+  state.running = !state.running;
+  log(state.running ? 'YouTube の取得を開始しました' : 'YouTube の取得を停止しました');
+  renderLive();
+};
+renderLive();
+
+log('YouTube の取得を開始しました（ダミー）');
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+{
+  "name": "superchat-cg",
+  "version": "1.0.0",
+  "description": "YouTube Live のスーパーチャット／コメントを Singular Live の CG に反映するローカル Web アプリ",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "demo": "node server.js --demo"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "UNLICENSED",
+  "private": true
+}
