@@ -123,11 +123,9 @@
               <tr><td><label for="fComment">コメント</label></td><td><input class="input" id="fComment" spellcheck="false"></td></tr>
               <tr><td><label for="fIcon">アイコン画像URL <span class="opt">任意</span></label></td><td><input class="input" id="fIcon" placeholder="例：Icon" spellcheck="false"></td></tr>
               <tr><td><label for="fColor">金額帯の色 <span class="opt">任意</span></label></td><td><input class="input" id="fColor" placeholder="例：price_color" spellcheck="false"></td></tr>
-              <tr><td><label for="fShow">表示フラグ <span class="opt">任意</span></label></td><td><input class="input" id="fShow" placeholder="例：show" spellcheck="false" aria-describedby="fShow-s"></td></tr>
             </tbody>
           </table>
-          <p class="support">通常コメントのときは「金額」「金額帯の色」を空で送ります。「金額帯の色」はスパチャのとき YouTube と同じ色を <code>#d00000</code> の形式で送ります</p>
-          <p class="support" id="fShow-s">「表示フラグ」を入力すると、そのフィールドに true / false を送って登場・退場を切り替えます。続けて出すときは退場させずに内容だけ入れ替えます。空欄なら Singular 標準の In / Out で切り替えます</p>
+          <p class="support">通常コメントのときは「金額」を空、「金額帯の色」を <code>auto</code> で送ります。スパチャのときの「金額帯の色」は YouTube と同じ色を <code>#d00000</code> の形式で送ります（空欄にすると送らず、Singular 側の自動判定になります）</p>
         </div>
         <div class="with-btn" style="align-items:center">
           <button type="button" class="btn btn-secondary" id="testSend">保存してテストデータを送出</button>
@@ -147,6 +145,13 @@
             <label class="radio-card"><input type="radio" name="sendMode" value="manual"><b>手動</b><span class="support">操作画面で選んだものだけを送出</span></label>
           </div>
         </fieldset>
+        <fieldset class="field">
+          <legend class="legend">表示中に次のコメントを出すとき</legend>
+          <div class="radio-cards">
+            <label class="radio-card"><input type="radio" name="swapMode" value="update"><b>内容だけ入れ替える（おすすめ）</b><span class="support">CG を下げずに内容を送り直し、Singular 側の更新アニメで切り替えます</span></label>
+            <label class="radio-card"><input type="radio" name="swapMode" value="outin"><b>いったん下げてから出す</b><span class="support">OUT → 間隔 → IN の順に切り替えます</span></label>
+          </div>
+        </fieldset>
         <div class="form-row">
           <div class="field">
             <label for="dispSec">1件の表示時間（秒）</label>
@@ -155,7 +160,7 @@
           </div>
           <div class="field">
             <label for="gapSec">次の送出までの間隔（秒）</label>
-            <p class="support" id="gapSec-s">OUT のアニメーションが終わるまでの待ち時間</p>
+            <p class="support" id="gapSec-s">OUT してから次を出すまでの待ち時間（OUT のアニメーションは約 0.7 秒）</p>
             <input class="input input-short" id="gapSec" type="number" min="0" step="0.5" inputmode="decimal" aria-describedby="gapSec-s">
           </div>
         </div>

@@ -32,9 +32,9 @@ function fill(s) {
   $('fComment').value = s.singular.fields.comment;
   $('fIcon').value = s.singular.fields.icon;
   $('fColor').value = s.singular.fields.color;
-  $('fShow').value = s.singular.fields.show;
 
   setRadio('sendMode', s.singular.autoSend ? 'auto' : 'manual');
+  setRadio('swapMode', s.singular.swapInPlace === false ? 'outin' : 'update');
   $('dispSec').value = s.singular.displaySeconds;
   $('gapSec').value = s.singular.gapSeconds;
 
@@ -99,9 +99,9 @@ function collect() {
         comment: $('fComment').value.trim(),
         icon: $('fIcon').value.trim(),
         color: $('fColor').value.trim(),
-        show: $('fShow').value.trim(),
       },
       autoSend: radio('sendMode') === 'auto',
+      swapInPlace: radio('swapMode') !== 'outin',
       displaySeconds: Number($('dispSec').value),
       gapSeconds: Number($('gapSec').value),
     },
