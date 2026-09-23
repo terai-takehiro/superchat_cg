@@ -55,9 +55,12 @@ function renderSource() {
 document.querySelectorAll('input[name=source]').forEach((r) => r.addEventListener('change', renderSource));
 
 // 取得間隔の目安を表示
+const videoCount = () => $('ytVideo').value.split(/\r?\n/).filter((v) => v.trim()).length;
 function renderEstimate() {
   const quota = Number($('ytQuota').value) || 0;
-  const calls = Math.floor(Math.max(0, quota - 50) / 5);
+  // 複数の配信を取得するときは、上限を配信の数で分け合う
+  const n = Math.max(1, videoCount());
+  const calls = Math.floor(Math.max(0, quota - 50) / 5 / n);
   const auto = radio('pacing') !== 'fixed';
   $('ytInterval').disabled = auto;
   let text;
@@ -65,18 +68,18 @@ function renderEstimate() {
     text = '1日の上限を入力してください';
   } else if (auto) {
     const sec = Math.ceil(86400 / calls);
-    text = `目安：約 ${sec} 秒ごとに取得（1日 ${calls.toLocaleString()} 回）。上限を増やすと間隔が短くなります。`;
+    text = `目安：約 ${sec} 秒ごとに取得（1日 ${calls.toLocaleString()} 回${n > 1 ? `／配信ごと・${n} 配信` : ''}）。上限を増やすと間隔が短くなります。`;
     if (sec > 30) text += ' 長時間配信で反映を速くしたい場合は、Google に上限の引き上げを申請してください。';
   } else {
     const iv = Math.max(1, Number($('ytInterval').value) || 5);
     const hours = (calls * iv) / 3600;
     text = hours >= 24
       ? `目安：${iv} 秒ごとなら1日中取得できます。`
-      : `目安：${iv} 秒ごとだと約 ${hours.toFixed(1)} 時間で上限に達し、リセットまで取得が止まります。`;
+      : `目安：${iv} 秒ごとだと${n > 1 ? ` ${n} 配信で` : ''}約 ${hours.toFixed(1)} 時間で上限に達し、リセットまで取得が止まります。`;
   }
   $('paceEstimate').innerHTML = `<span aria-hidden="true">ℹ</span><div>${esc(text)}</div>`;
 }
-['ytQuota', 'ytInterval'].forEach((id) => $(id).addEventListener('input', renderEstimate));
+['ytQuota', 'ytInterval', 'ytVideo'].forEach((id) => $(id).addEventListener('input', renderEstimate));
 document.querySelectorAll('input[name=pacing]').forEach((r) => r.addEventListener('change', renderEstimate));
 
 function collect() {

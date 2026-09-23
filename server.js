@@ -196,11 +196,13 @@ function updateSettings(input) {
   if (errors.length) return { errors };
   const autoTurnedOn = !settings.singular.autoSend && next.singular.autoSend;
   const restartRequired = next.port !== settings.port || next.host !== settings.host;
-  const streamsChanged = next.youtube.source !== settings.youtube.source || next.youtube.videos.join('\n') !== settings.youtube.videos.join('\n');
+  const sourceChanged = next.youtube.source !== settings.youtube.source;
+  const streamsChanged = sourceChanged || next.youtube.videos.join('\n') !== settings.youtube.videos.join('\n');
   settings = next;
   config.save(settings);
   if (streamsChanged) {
     // 配信の URL・取得方法が変わったら作り直す（取得中なら新しい一覧で取得し直す）
+    if (sourceChanged) streams.rebuild(settings.youtube.videos, { force: true });
     if (wantRunning && settings.youtube.videos.length) {
       startChat().catch(() => broadcast('youtube', ytStatus()));
     } else {
@@ -252,7 +254,8 @@ async function watchdog() {
     return;
   }
   for (const entry of streams.stopped()) {
-    const err = await streams.startOne(entry, chatOptions(), { reconnect: true });
+    // 一度も始められていない配信（配信前など）は、初回として「取得開始より前のコメント」の設定に従う
+    const err = await streams.startOne(entry, chatOptions(), { reconnect: entry.started });
     const who = streams.list.length > 1 ? `配信${entry.index}` : 'YouTube';
     if (!err) {
       log(`${who} の取得を再開しました：${entry.chat.status().title}`);
